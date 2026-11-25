@@ -4,10 +4,10 @@ service cloud.firestore {
     function me() { return get(/databases/$(db)/documents/admins/$(request.auth.uid)).data; }
     function isAdmin() { return request.auth != null && exists(/databases/$(db)/documents/admins/$(request.auth.uid)); }
     function isDev() { return isAdmin() && me().role == 'dev'; }
-    // أستاذ أو مطوّر: الامتحانات
-    function isStaff() { return isAdmin() && (me().role == 'dev' || me().role == 'prof'); }
-    // مطوّر أو رئيس/عميد: الجدول
-    function canCourses() { return isAdmin() && (me().role == 'dev' || me().role == 'head'); }
+    // أستاذ أو مطوّر أو رئيس/عميد: الامتحانات
+    function isStaff() { return isAdmin() && (me().role == 'dev' || me().role == 'prof' || me().role == 'head'); }
+    // مطوّر فقط: الجدول
+    function canCourses() { return isAdmin() && me().role == 'dev'; }
     // مطوّر أو أستاذ أو رئيس/عميد: التبليغات
     function canNotes() { return isAdmin() && (me().role == 'dev' || me().role == 'prof' || me().role == 'head'); }
     function isHead() { return isAdmin() && me().role == 'head'; }
@@ -34,6 +34,12 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted', 'deletedBy', 'deletedAt']))
         || viewBump();
       allow delete: if isDev();
+    }
+
+    // قوائم الطلاب: المطوّر والعميد يتحكمون بالكل، الأستاذ يرى فقط، الممثل لا يرى
+    match /students/{id} {
+      allow read: if isStaff();
+      allow create, update, delete: if isDev() || isHead();
     }
 
     match /meta/{id} { allow read: if true; allow write: if isDev(); }
