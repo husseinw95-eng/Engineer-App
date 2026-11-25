@@ -279,7 +279,7 @@ function filterBar(){
   return'<div class="fl"><select id="fd"><option value="">كل الأقسام</option>'+deptGroups(FL.dept)+'</select><select id="fs"><option value="">كل المراحل</option>'+opts(STAGES,FL.stage)+'</select><select id="fg"><option value="">كل الشعب</option>'+opts(groups(),FL.grp)+'</select></div>'+(FL.stage?"":'<div class="hint">اختر مرحلتك وشعبتك من القوائم أعلاه لعرض جدولك فقط.</div>')+'<datalist id="depts">'+ds.map(function(d){return'<option value="'+esc(d)+'">'}).join("")+'</datalist>';
 }
 function tg(x){var st=S.role==="student";return(x.grp?'<span class="tg">'+esc(x.grp)+'</span>':"")+(x.dept&&!st?'<span class="tg">'+esc(x.dept)+'</span>':"")+(x.stage&&!st?'<span class="tg">المرحلة '+esc(x.stage)+'</span>':"")}
-function can(col){var v=S.view;return v==="dev"||(v==="prof"&&col!=="courses")||(v==="head"&&col!=="exams")||(v==="rep"&&col==="notes")}
+function can(col){var v=S.view;return v==="dev"||(v==="prof"&&col!=="courses")||(v==="head"&&col!=="courses")||(v==="rep"&&col==="notes")}
 function acts(c,id){
   if(!can(c))return"";
   if(S.view==="rep"){var r=S[c].filter(function(x){return x.id===id})[0]||{};return r.uid&&r.uid===MYUID?delBtn(c,id):""}
@@ -360,7 +360,7 @@ function previewBar(){
   var h='<div class="card"><div class="m" style="margin-bottom:6px">👁 معاينة التطبيق (تظهر لك أنت فقط كمالك)</div><div class="seg">'+V.map(function(v){return'<button data-v="'+v[0]+'"'+(S.view===v[0]?' class="on"':"")+'>'+v[1]+'</button>'}).join("")+'</div>';
   if(S.view==="dev")h+='<div class="m" style="margin-top:8px">المطوّر: يحرّر المحتوى ويدير الصلاحيات. المواد: '+S.courses.length+' · الامتحانات: '+S.exams.length+' · التبليغات: '+S.notes.length+'<br>لإضافة أستاذ: أنشئ حسابه في Firebase Authentication ثم أضف مستنداً في مجموعة admins باسم UID الخاص به وفيه الحقل role بقيمة prof.<br><button class="go" data-seed="1" style="margin-top:8px">'+(S.pend==="seed"?"تأكيد الاستيراد؟":"استيراد البيانات الأولية (مرة واحدة)")+'</button></div>';
   else if(S.view==="prof")h+='<div class="m" style="margin-top:8px">الأستاذ: يضيف ويعدّل ويحذف الامتحانات والتبليغات فقط، ولا يعدّل الجدول ولا يدير الصلاحيات.</div>';
-  else if(S.view==="head")h+='<div class="m" style="margin-top:8px">رئيس القسم / العميد: يعدّل الجدول، وينشر تبليغات لأي قسم ومرحلة، ويرى كل التبليغات (من الممثلين والأساتذة) مع عدد المشاهدات، ولا يعدّل الامتحانات.</div>';
+  else if(S.view==="head")h+='<div class="m" style="margin-top:8px">رئيس القسم / العميد: يعدّل الامتحانات والتبليغات ويحذفها، وينشر تبليغات لأي قسم ومرحلة، ويرى كل التبليغات مع عدد المشاهدات. لا يعدّل الجدول.</div>';
   else if(S.view==="rep")h+='<div class="m" style="margin-top:8px">ممثل الكروب: يرى جدول كروبه فقط، وينشر تبليغات لكروبه ويحذف تبليغاته هو، ولا يعدّل الجدول ولا الامتحانات.</div>';
   else h+='<div class="m" style="margin-top:8px">الطالب: مشاهدة فقط، بلا أي زر تعديل أو حذف.</div>';
   return h+'</div>'+(S.view==="dev"||S.view==="head"?repPanel():"");
