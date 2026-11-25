@@ -95,8 +95,35 @@ html,body{overflow-x:hidden}
 .kd,.lec.lab .kd{background:var(--c);color:#fff}
 .lec.lab .kd{background:transparent;color:var(--c);box-shadow:inset 0 0 0 1.5px var(--c)}
 .day{color:var(--c,var(--tx))}
-.toast{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:16px;right:16px;margin:auto;max-width:420px;background:#1d2433;color:#fff;padding:12px 16px;border-radius:14px;text-align:center;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.3);font-weight:600}
+.toast{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom,0px));left:16px;right:16px;margin:auto;max-width:420px;background:#1d2433;color:#fff;padding:12px 16px;border-radius:14px;text-align:center;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.3);font-weight:600}
 .cf{background:#ef4444!important;color:#fff!important;border-radius:10px;font-size:13px!important;padding:4px 10px!important;font-weight:700}
+/* Bottom Nav */
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--bd);display:flex;justify-content:space-around;align-items:center;padding:6px 0 calc(6px + env(safe-area-inset-bottom,0px));z-index:90;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.bnav button{border:0;background:none;color:var(--mu);font:inherit;font-size:11px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 10px;border-radius:12px;position:relative;transition:color .15s}
+.bnav button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.8}
+.bnav button.on{color:var(--pr)}
+.bnav button.on::before{content:"";position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:28px;height:3px;border-radius:2px;background:var(--pr)}
+.bnav b{position:absolute;top:-2px;right:4px;background:#ef4444;color:#fff;font-size:10px;min-width:17px;height:17px;line-height:17px;text-align:center;border-radius:99px;padding:0 3px}
+.wrap{padding-bottom:90px}
+/* Welcome card */
+.welcome{background:linear-gradient(135deg,#14235a 0%,#2f5bea 100%);color:#fff;border-radius:18px;padding:18px 16px;margin:8px 0 14px;position:relative;overflow:hidden}
+.welcome::after{content:"";position:absolute;top:-30px;inset-inline-start:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08)}
+.welcome .wt{font-size:20px;font-weight:800;margin-bottom:2px}
+.welcome .ws{font-size:14px;opacity:.85}
+/* Quick info cards */
+.qcards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.qcard{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.qcard .qi{width:36px;height:36px;border-radius:11px;display:grid;place-items:center}
+.qcard .qi svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.9}
+.qcard .ql{font-size:12px;color:var(--mu);margin-top:4px}
+.qcard .qv{font-size:15px;font-weight:700;line-height:1.3}
+/* Section animation */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.grid,.qcards,.card,.lec,.sh,.welcome{animation:fadeUp .25s ease}
+/* Improved tile */
+.tile{min-height:130px;border-radius:20px;padding:14px 14px 13px}
+.tile .ti{width:46px;height:46px;border-radius:14px}
+.tile .ti svg{width:26px;height:26px}
 </style>
 </head>
 <body>
@@ -241,7 +268,7 @@ function regView(){
   var v=S.reg||ME,fac=v.fac||facOf(v.dept)||"",dp=depsOf(fac);
   return'<div class="card"><div class="t" style="margin-bottom:8px">'+(ME.stage?"تغيير بياناتي":"تسجيل الطالب")+'</div><form class="add" data-f="reg"><select name="fac" class="full" required><option value="">اختر كليتك</option>'+opts(facNames(),fac)+'</select>'+(dp.length?'<select name="dept" class="full" required><option value="">اختر قسمك</option>'+opts(dp,v.dept)+'</select>':'<input type="hidden" name="dept" value="'+esc(fac)+'">')+'<select name="stage" class="full" required><option value="">اختر مرحلتك</option>'+opts(STAGES,v.stage)+'</select><select name="grp" class="full"><option value="">كل شعب المرحلة</option>'+opts(groupsOf(v.stage),v.grp)+'</select><button class="go'+(ME.stage?"":" full")+'">حفظ ودخول</button>'+(ME.stage?'<button type="button" class="go" style="background:var(--mu)" data-regc="1">إلغاء</button>':"")+'</form><div class="hint">سيعرض التطبيق جدول مرحلتك فقط. اختر كروبك (مثل A1) أو شعبتك (A)، أو اتركها فارغة لعرض كل شعب مرحلتك.</div></div>';
 }
-function meBar(){return'<div class="card row" style="align-items:center"><div><div class="t">🎓 '+esc(ME.dept||"")+'</div><div class="m">المرحلة '+esc(ME.stage)+(ME.grp?' · '+esc(ME.grp):'')+'</div></div><button class="x" data-reg="1" style="font-size:14px">تغيير</button></div>'}
+function meBar(){return'<div class="card row" style="align-items:center"><div><div class="t">🎓 '+esc(ME.dept||"")+'</div><div class="m">المرحلة '+esc(ME.stage)+(ME.grp?' · '+esc(ME.grp):'')+'</div></div><button class="x" data-reg="1" style="font-size:14px">✏️ تغيير</button></div>'}
 setTimeout(function(){if(!S.ready){S.ready=true;render()}},3000);
 function match(x){var f=S.role==="student"?ME:FL;return(!f.dept||!x.dept||x.dept===f.dept)&&(!f.stage||!x.stage||x.stage===f.stage)&&(!f.grp||!x.grp||x.grp===f.grp||f.grp.charAt(0)===x.grp||x.grp.charAt(0)===f.grp)}
 function depts(){var a=[];["courses","exams","notes"].forEach(function(c){S[c].forEach(function(x){if(x.dept&&a.indexOf(x.dept)<0)a.push(x.dept)})});return a}
@@ -383,6 +410,33 @@ function notifCard(){
 function nearBanner(){
   return S.exams.filter(match).filter(function(e){var d=daysLeft(e);return d>=0&&d<=3}).map(function(e){var d=daysLeft(e);return'<div class="alert">تنبيه · امتحان '+esc(e.course)+(d===0?" اليوم":d===1?" غدًا":" بعد "+d+" أيام")+" — "+esc(e.time)+'</div>'}).join("");
 }
+function welcomeCard(){
+  var now=new Date(),h=now.getHours();
+  var greet=h<12?"صباح الخير ☀️":h<17?"مساء الخير 👋":"مساء النور 🌙";
+  var name=ME.stage?esc(ME.dept||""):"";
+  return'<div class="welcome"><div class="wt">'+greet+'</div><div class="ws">'+(name?"المرحلة "+esc(ME.stage)+(ME.grp?" · "+esc(ME.grp):""):"مرحباً بك في تطبيق جامعة العين")+'</div></div>';
+}
+function quickCards(){
+  var cs=S.courses.filter(match),day=new Date().getDay();
+  var now=new Date(),hm=("0"+now.getHours()).slice(-2)+":"+("0"+now.getMinutes()).slice(-2);
+  var todayL=cs.filter(function(c){return +c.day===day}).sort(function(a,b){return a.start>b.start?1:-1});
+  var nextL=todayL.filter(function(c){return c.start>hm})[0];
+  var liveL=todayL.filter(function(c){return c.start<=hm&&hm<c.end})[0];
+  var up=S.exams.filter(match).filter(function(e){return daysLeft(e)>=0}).sort(function(a,b){return(a.date+a.time)>(b.date+b.time)?1:-1});
+  var h='<div class="qcards">';
+  // next/live lecture
+  h+='<div class="qcard"><div class="qi" style="background:linear-gradient(135deg,#0e8aa8,#0a5f78)">'+IC.today+'</div>';
+  if(liveL)h+='<div class="ql">المحاضرة الحالية</div><div class="qv">'+esc(liveL.name)+'</div><div class="m" style="font-size:12px">'+esc(liveL.start)+' - '+esc(liveL.end)+(liveL.room?' · '+esc(liveL.room):'')+'</div>';
+  else if(nextL)h+='<div class="ql">المحاضرة القادمة</div><div class="qv">'+esc(nextL.name)+'</div><div class="m" style="font-size:12px">'+esc(nextL.start)+(nextL.room?' · قاعة '+esc(nextL.room):'')+'</div>';
+  else h+='<div class="ql">محاضرات اليوم</div><div class="qv">'+(todayL.length?'انتهت ('+todayL.length+')':'لا توجد')+'</div>';
+  h+='</div>';
+  // next exam
+  h+='<div class="qcard"><div class="qi" style="background:linear-gradient(135deg,#5b45d6,#3b2aa5)">'+IC.exams+'</div>';
+  if(up.length){var d=daysLeft(up[0]);h+='<div class="ql">أقرب امتحان</div><div class="qv">'+esc(up[0].course)+'</div><div class="m" style="font-size:12px">'+(d===0?"اليوم":d===1?"غدًا":"بعد "+d+" أيام")+'</div>'}
+  else h+='<div class="ql">الامتحانات</div><div class="qv">لا توجد قريباً</div>';
+  h+='</div></div>';
+  return h;
+}
 function homeTiles(){
   var cs=S.courses.filter(match),day=new Date().getDay();
   var td=cs.filter(function(c){return +c.day===day}).length;
@@ -391,7 +445,7 @@ function homeTiles(){
   if(up.length){var d=daysLeft(up[0]);ex="التالي: "+(d===0?"اليوم":d===1?"غدًا":"بعد "+d+" أيام")}
   var u=unread(),nt=S.notes.filter(match).filter(function(n){return !n.deleted}).length;
   var info={sched:cs.length+" محاضرة",today:td?td+" محاضرات اليوم":"لا توجد اليوم",exams:ex,notes:S.role==="student"?(u?u+" جديد":"لا جديد"):nt+" تبليغ"};
-  return'<div class="grid">'+["sched","today","exams","notes"].map(function(k){
+  return'<div class="grid">'+["today","sched","notes","exams"].map(function(k){
     return'<button class="tile" data-go="'+k+'" style="background:'+SEC[k].c+'"><span class="ti">'+IC[k]+'</span><span><span class="tl">'+SEC[k].t+'</span><span class="ts">'+info[k]+'</span></span>'+(k==="notes"&&S.role==="student"&&u?'<b class="tb">'+u+'</b>':"")+'</button>';
   }).join("")+'</div>';
 }
@@ -414,9 +468,10 @@ function render(){
   var h=loginCard();
   if(S.view==="head")edAlert='<div class="alert" style="background:var(--pr2);color:var(--pr)">رئيس القسم / العميد: يمكنك تعديل الجدول ونشر تبليغات لأي قسم ورؤية كل التبليغات.</div>';
   if(S.view==="rep")edAlert='<div class="alert" style="background:var(--pr2);color:var(--pr)">ممثل كروب: يمكنك نشر تبليغات لكروبك وحذف تبليغاتك.</div>';
-  if(S.tab==="home")h+=previewBar()+edAlert+(S.role==="student"?meBar()+installCard()+notifCard()+nearBanner():"")+homeTiles();
+  if(S.tab==="home")h+=previewBar()+edAlert+(S.role==="student"?welcomeCard()+meBar()+installCard()+notifCard()+nearBanner()+quickCards():"")+homeTiles();
   else h+=secHead(S.tab)+edAlert+(S.role==="student"?"":filterBar())+(S.tab==="sched"?schedView():S.tab==="today"?todayView():S.tab==="exams"?examsView():notesView());
   $("view").innerHTML=h;
+  renderNav();
 }
 function go(t){
   if(t==="home"){
@@ -466,6 +521,18 @@ $("view").onsubmit=function(e){
   add(col,o);
 };
 try{history.replaceState(null,"")}catch(e){}
+// Bottom navigation
+var navEl=document.createElement("nav");navEl.className="bnav";navEl.id="bnav";document.body.appendChild(navEl);
+var NAVS=[["home","الرئيسية",svg('<path d="M3 10.5L12 3l9 7.5V20a1.5 1.5 0 0 1-1.5 1.5h-4.75v-6.25h-3.5v6.25H5.5A1.5 1.5 0 0 1 4 20z"/>')],["today","اليوم",IC.today],["sched","الجدول",IC.sched],["notes","التبليغات",IC.notes],["exams","الامتحانات",IC.exams]];
+function renderNav(){
+  var u=unread(),h="";
+  NAVS.forEach(function(n){
+    var on=S.tab===n[0]||(S.tab==="home"&&n[0]==="home");
+    h+='<button data-nav="'+n[0]+'"'+(on?' class="on"':"")+'>'+n[2]+(n[0]==="notes"&&S.role==="student"&&u?'<b>'+u+'</b>':"")+n[1]+'</button>';
+  });
+  $("bnav").innerHTML=h;
+}
+navEl.onclick=function(e){var b=e.target.closest("[data-nav]");if(b)go(b.dataset.nav)};
 render();
 </script>
 
