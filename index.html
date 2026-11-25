@@ -375,8 +375,23 @@ function studentsForm(){
   h+='</form></div>';
   return h;
 }
+function importForm(){
+  var h='<div class="card"><div class="t" style="margin-bottom:8px">📥 استيراد قائمة أسماء</div>';
+  h+='<div class="m" style="margin-bottom:6px">الصق أسماء الطلاب (اسم واحد في كل سطر):</div>';
+  h+='<form class="add" data-f="importList">';
+  h+='<textarea class="full" name="names" rows="8" placeholder="مثال:\nأحمد علي محمد\nزينب حسن كاظم\nمحمد صادق عبد الله" style="resize:vertical;line-height:1.9" required></textarea>';
+  h+='<select name="dept"><option value="">القسم (اختياري)</option>'+deptGroups("")+'</select>';
+  h+='<select name="stage" required><option value="">المرحلة *</option>'+opts(STAGES,"")+'</select>';
+  h+='<select name="grp" required><option value="">الكروب *</option>'+opts(groups(),"")+'</select>';
+  h+='<button class="go full">استيراد القائمة</button>';
+  h+='<button type="button" class="go full" style="background:var(--mu)" data-impclose="1">إلغاء</button>';
+  h+='</form></div>';
+  return h;
+}
 function studentsView(){
   var h=can("students")?studentsForm():"";
+  if(can("students"))h+='<button class="go" data-imptog="1" style="margin:4px 0 8px;width:100%">'+(S.importing?"إخفاء الاستيراد":"📥 استيراد قائمة أسماء")+'</button>';
+  if(S.importing&&can("students"))h+=importForm();
   var f=FL;
   var list=S.students.filter(function(x){
     return(!f.dept||!x.dept||x.dept===f.dept)&&(!f.stage||!x.stage||x.stage===f.stage)&&(!f.grp||!x.grp||x.grp===f.grp)
@@ -545,6 +560,8 @@ $("view").onclick=function(e){var gt=e.target.closest&&e.target.closest("[data-g
   else if(d.cancel){S.edit=null;render()}
   else if(d.seed){twoTap("seed",seedAll)}
   else if(d.seedst){twoTap("seedSt",seedStudents)}
+  else if(d.imptog){S.importing=!S.importing;render()}
+  else if(d.impclose){S.importing=false;render()}
   else if(d.hideinst){try{localStorage.setItem("hideInstall","1")}catch(x){}render()}
   else if(d.notif){try{Notification.requestPermission().then(function(){render()})}catch(x){}}
   else if(d.forgot){forgot()}
@@ -561,6 +578,19 @@ $("view").onsubmit=function(e){
   if(S.edit&&S.edit.col===col){var k=col==="notes"?"from":"by",old=S[col].filter(function(x){return x.id===S.edit.id})[0]||{};if(MYNAME&&!old[k])o[k]=MYNAME;save(col,S.edit.id,o);return}
   if(col==="rep"){var cu=auth&&auth.currentUser;if(!cu)return;if(!o.name||!o.dept||!o.stage||!o.grp){toast("أكمل كل الحقول");return}
     db.collection("repRequests").doc(cu.uid).set({name:o.name,dept:o.dept,stage:o.stage,grp:o.grp,email:cu.email||"",status:"pending",ts:Date.now()}).then(function(){S.rr=null;toast("أُرسل طلبك وبانتظار الموافقة")}).catch(fail);return}
+  if(col==="importList"){
+    var lines=o.names.split("\n").map(function(l){return l.trim()}).filter(function(l){return l.length>0});
+    if(!lines.length){toast("الصق أسماء الطلاب أولاً");return}
+    if(!o.stage||!o.grp){toast("اختر المرحلة والكروب");return}
+    if(!db)return;
+    var n=0,total=lines.length;
+    lines.forEach(function(name){
+      var rec={name:name,dept:o.dept||"",stage:o.stage,grp:o.grp,ts:Date.now()};
+      if(MYUID)rec.addedBy=MYUID;
+      db.collection("students").add(rec).then(function(){n++;if(n===total){toast("تم استيراد "+n+" طالب");S.importing=false;render()}}).catch(fail);
+    });
+    return;
+  }
   if(col==="students"){
     o.ts=Date.now();if(MYUID)o.addedBy=MYUID;
     if(!o.name){toast("اكتب اسم الطالب");return}
