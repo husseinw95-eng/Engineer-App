@@ -860,13 +860,13 @@ function statsView(){
 function actLogView(){
   var logs=S.actLog||[];
   if(!logs.length)return'<div class="empty">لا يوجد نشاط مسجّل بعد.</div>';
-  var actLabels={add_courses:"➕ إضافة مادة",add_exams:"➕ إضافة امتحان",add_notes:"📢 إضافة تبليغ",add_students:"➕ إضافة طالب",delete_note:"🗑 حذف تبليغ",delete_admin:"🗑 حذف مستخدم",delete_courses:"🗑 حذف مادة",delete_exams:"🗑 حذف امتحان",delete_students:"🗑 حذف طالب","export":"📊 تصدير"};
+  var actLabels={add_courses:"➕ إضافة مادة",add_exams:"➕ إضافة امتحان",add_notes:"📢 إضافة تبليغ",add_students:"➕ إضافة طالب",delete_note:"🗑 حذف تبليغ",delete_admin:"🗑 حذف مستخدم",delete_courses:"🗑 حذف مادة",delete_exams:"🗑 حذف امتحان",delete_students:"🗑 حذف طالب",delete_attendance:"🗑 حذف حضور","export":"📊 تصدير",attendance:"📋 تسجيل حضور"};
   var h='<div class="card">';
   logs.forEach(function(l){
     var act=actLabels[l.action]||l.action;
     var tm=l.ts?new Date(l.ts).toLocaleString("ar",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"";
     var roleL={dev:"مطوّر",head:"عميد",prof:"أستاذ",rep:"ممثل"}[l.role]||"";
-    h+='<div class="log-item"><span class="log-act">'+act+'</span>'+(l.detail?' · '+esc(l.detail):'')+'<div class="log-time">'+esc(l.by||"")+' ('+roleL+') · '+tm+'</div></div>';
+    h+='<div class="log-item"><span class="log-act">'+act+'</span>'+(l.detail?' · '+esc(l.detail):'')+(REAL==="dev"?'<button class="x" data-dellog="'+esc(l.id)+'" style="float:left;font-size:12px;color:#dc2626;margin-left:6px">🗑</button>':'')+'<div class="log-time">'+esc(l.by||"")+' ('+roleL+') · '+tm+'</div></div>';
   });
   h+='</div>';
   return h;
@@ -963,6 +963,7 @@ $("view").onclick=function(e){var gt=e.target.closest&&e.target.closest("[data-g
   if(e.target.id==="saveAtt"){saveAttendance();return}
   if(e.target.id==="exportAtt"){exportAttendance();return}
   var da=e.target.closest&&e.target.closest("[data-delatt]");if(da){var aid=da.dataset.delatt;twoTap("delatt"+aid,function(){if(db)db.collection("attendance").doc(aid).delete().then(function(){toast("تم حذف سجل الحضور");logActivity("delete_attendance","حذف سجل حضور")}).catch(fail)});return}
+  var dl=e.target.closest&&e.target.closest("[data-dellog]");if(dl){var lid=dl.dataset.dellog;twoTap("dellog"+lid,function(){if(db)db.collection("activityLog").doc(lid).delete().then(function(){toast("تم حذف النشاط")}).catch(fail)});return}
 };
 $("view").onchange=function(e){var i=e.target.id,fm=e.target.form;if(fm&&fm.dataset.f==="rep"){var el0=fm.elements;S.rr={name:el0["name"].value,dept:el0.dept.value,stage:el0.stage.value,grp:el0.grp.value};if(e.target.name==="stage")S.rr.grp="";render();return}if(fm&&fm.dataset.f==="reg"){var el=fm.elements;S.reg={fac:el.fac.value,dept:el.dept.value,stage:el.stage.value,grp:el.grp.value};if(e.target.name==="fac")S.reg.dept=depsOf(S.reg.fac).length?"":S.reg.fac;if(e.target.name==="stage")S.reg.grp="";render();return}if(i==="fd"||i==="fs"||i==="fg"){FL[{fd:"dept",fs:"stage",fg:"grp"}[i]]=e.target.value;try{localStorage.setItem("fl",JSON.stringify(FL))}catch(x){}render()}if(i==="attDate"){S.attDate=e.target.value;S.attMarks={};S.attSaved=false;render()}if(i==="attStage"){S.attStage=e.target.value;S.attMarks={};S.attSaved=false;render()}if(i==="attGrp"){S.attGrp=e.target.value;S.attMarks={};S.attSaved=false;render()}};
 $("view").onsubmit=function(e){
