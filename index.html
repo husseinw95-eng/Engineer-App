@@ -446,25 +446,49 @@ function parseImportFile(file){
   }else{st.textContent="❌ صيغة غير مدعومة. استخدم PDF أو Excel أو CSV"}
 }
 function studentsView(){
-  var h=can("students")?studentsForm():"";
-  if(can("students"))h+='<button class="go" data-imptog="1" style="margin:4px 0 8px;width:100%">'+(S.importing?"إخفاء الاستيراد":"📥 استيراد قائمة أسماء")+'</button>';
-  if(S.importing&&can("students"))h+=importForm();
-  var f=FL;
-  var list=S.students.filter(function(x){
-    return(!f.dept||!x.dept||x.dept===f.dept)&&(!f.stage||!x.stage||x.stage===f.stage)&&(!f.grp||!x.grp||x.grp===f.grp)
-  }).sort(function(a,b){return(a.name||"")>(b.name||"")?1:-1});
-  h+=filterBar();
+  var h="";
+  var list=S.students.sort(function(a,b){return(a.name||"")>(b.name||"")?1:-1});
   var grps={};
-  list.forEach(function(s){var g=(s.stage?"المرحلة "+s.stage+" · ":"")+(s.grp||"بدون كروب");if(!grps[g])grps[g]=[];grps[g].push(s)});
+  list.forEach(function(s){var k=(s.stage||"?")+"|||"+(s.grp||"—");if(!grps[k])grps[k]=[];grps[k].push(s)});
   var keys=Object.keys(grps).sort();
-  if(!keys.length)return h+'<div class="empty">لا يوجد طلاب مسجلون.'+(can("students")?"<br>استخدم النموذج أعلاه لإضافة طلاب.":"")+'</div>';
-  keys.forEach(function(g){
-    h+='<div class="day" style="--c:#0f7b4f">📋 '+esc(g)+' ('+grps[g].length+' طالب)</div>';
-    grps[g].forEach(function(s,i){
-      h+='<div class="card"><div class="row"><div><div class="t"><span style="color:var(--mu);font-size:13px">'+(i+1)+'.</span> '+esc(s.name)+'</div>'+(s.phone?'<div class="m">📱 <a href="tel:'+esc(s.phone)+'" style="color:var(--pr)">'+esc(s.phone)+'</a></div>':'')+'</div><div>'+acts("students",s.id)+'</div></div></div>';
+  // إذا مفتوح كروب معيّن — عرض الأسماء
+  if(S.openGrp&&grps[S.openGrp]){
+    var gStudents=grps[S.openGrp];
+    var parts=S.openGrp.split("|||");
+    h+='<button class="go" data-grpback="1" style="background:var(--mu);margin-bottom:10px;width:100%">→ رجوع للكروبات</button>';
+    h+='<div class="card" style="border-color:var(--ok)"><div class="t" style="color:var(--ok);font-size:17px;margin-bottom:4px">📋 المرحلة '+esc(parts[0])+' — كروب '+esc(parts[1])+'</div><div class="m">'+gStudents.length+' طالب</div></div>';
+    if(can("students")){
+      h+=studentsForm();
+      h+='<button class="go" data-imptog="1" style="margin:4px 0 8px;width:100%">'+(S.importing?"إخفاء الاستيراد":"📥 استيراد قائمة أسماء")+'</button>';
+      if(S.importing)h+=importForm();
+    }
+    gStudents.forEach(function(s,i){
+      var btns=can("students")?acts("students",s.id):"";
+      h+='<div class="card" style="padding:10px 14px"><div class="row"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="background:var(--pr);color:#fff;border-radius:50%;min-width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">'+(i+1)+'</span><span class="t" style="font-size:15px">'+esc(s.name)+'</span></div>'+(s.phone?'<div class="m" style="margin-top:4px;padding-right:36px">📱 <a href="tel:'+esc(s.phone)+'" style="color:var(--pr)">'+esc(s.phone)+'</a></div>':'')+'</div>'+(btns?'<div style="white-space:nowrap">'+btns+'</div>':'')+'</div></div>';
     });
+    h+='<div class="m" style="text-align:center;margin:16px 0">المجموع: '+gStudents.length+' طالب</div>';
+    return h;
+  }
+  // الواجهة الرئيسية — عرض الكروبات كبطاقات
+  if(can("students")){
+    h+='<button class="go" data-imptog="1" style="margin:0 0 10px;width:100%">'+(S.importing?"إخفاء الاستيراد":"📥 استيراد قائمة أسماء")+'</button>';
+    if(S.importing)h+=importForm();
+  }
+  if(!keys.length)return h+'<div class="empty">لا يوجد طلاب مسجلون.'+(can("students")?"<br>استخدم زر الاستيراد لإضافة طلاب.":"")+'</div>';
+  var stages={};
+  keys.forEach(function(k){var p=k.split("|||");var st=p[0];if(!stages[st])stages[st]=[];stages[st].push(k)});
+  var stKeys=Object.keys(stages).sort();
+  stKeys.forEach(function(st){
+    var total=0;stages[st].forEach(function(k){total+=grps[k].length});
+    h+='<div class="day" style="--c:#0f7b4f">🎓 المرحلة '+esc(st)+' ('+total+' طالب)</div>';
+    h+='<div class="grid">';
+    stages[st].sort().forEach(function(k){
+      var p=k.split("|||");var cnt=grps[k].length;
+      h+='<button class="tile" data-opengrp="'+esc(k)+'" style="background:linear-gradient(135deg,#0f7b4f,#065f38);min-height:110px"><div style="font-size:28px">👥</div><div><div style="font-size:16px;font-weight:700">كروب '+esc(p[1])+'</div><div style="font-size:13px;opacity:.85">'+cnt+' طالب</div></div></button>';
+    });
+    h+='</div>';
   });
-  h+='<div class="m" style="text-align:center;margin:16px 0">المجموع: '+list.length+' طالب</div>';
+  h+='<div class="m" style="text-align:center;margin:16px 0">المجموع الكلي: '+list.length+' طالب</div>';
   return h;
 }
 function previewBar(){
@@ -597,7 +621,7 @@ function go(t){
     if(history.state&&history.state.t){history.back();return}
     S.tab="home";S.edit=null;render();window.scrollTo(0,0);return;
   }
-  var from=S.tab;S.tab=t;S.edit=null;S.addOpen=false;
+  var from=S.tab;S.tab=t;S.edit=null;S.addOpen=false;S.openGrp=null;S.importing=false;
   try{if(from==="home")history.pushState({t:t},"");else history.replaceState({t:t},"")}catch(e){}
   render();window.scrollTo(0,0);
   if(t==="notes"&&S.role==="student")setTimeout(function(){if(S.tab==="notes"){countViews();saveRead(S.notes.map(function(n){return n.id}));render()}},1500);
@@ -607,6 +631,7 @@ $("bell").onclick=function(){go("notes")};
 $("view").onclick=function(e){var gt=e.target.closest&&e.target.closest("[data-go]");if(gt){go(gt.dataset.go);return}
   var hb=e.target.closest&&e.target.closest("[data-hist]");if(hb){var hp=hb.dataset.hist.split(":");S.hist[hp[0]]=hp[1]==="1";render();return}
   var ch=e.target.closest&&e.target.closest("[data-day]");if(ch){S.selDay=+ch.dataset.day;render();return}
+  var og=e.target.closest&&e.target.closest("[data-opengrp]");if(og){S.openGrp=og.dataset.opengrp;S.importing=false;render();window.scrollTo(0,0);return}
   var d=e.target.dataset||{};
   if(d.v){S.view=d.v;S.role=(d.v==="student"||d.v==="rep")?"student":"prof";S.edit=null;render()}
   else if(d.d)twoTap(d.d+d.id,function(){del(d.d,d.id)});
@@ -618,6 +643,7 @@ $("view").onclick=function(e){var gt=e.target.closest&&e.target.closest("[data-g
   else if(d.cancel){S.edit=null;render()}
   else if(d.seed){twoTap("seed",seedAll)}
   else if(d.seedst){twoTap("seedSt",seedStudents)}
+  else if(d.grpback){S.openGrp=null;S.importing=false;render();window.scrollTo(0,0)}
   else if(d.imptog){S.importing=!S.importing;render()}
   else if(d.impclose){S.importing=false;render()}
   else if(d.hideinst){try{localStorage.setItem("hideInstall","1")}catch(x){}render()}
