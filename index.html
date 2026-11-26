@@ -766,7 +766,7 @@ function attendanceView(){
     h+='<div class="card"><div class="t" style="margin-bottom:8px">📅 سجل الحضور السابق</div>';
     hist.forEach(function(a){
       var rc=a.records||{},pc=0,ac=0;Object.keys(rc).forEach(function(k){if(rc[k]==="p")pc++;else if(rc[k]==="a")ac++});
-      h+='<div class="log-item"><span class="log-act">'+esc(a.date)+'</span> · '+esc(a.stage||"")+(a.grp?" · "+esc(a.grp):"")+(a.by?" · "+esc(a.by):"")+'<br><span style="color:#16a34a">حاضر: '+pc+'</span> · <span style="color:#dc2626">غائب: '+ac+'</span><span class="log-time" style="float:left">'+(a.ts?new Date(a.ts).toLocaleDateString("ar",{day:"numeric",month:"short"}):"")+'</span></div>';
+      h+='<div class="log-item"><span class="log-act">'+esc(a.date)+'</span> · '+esc(a.stage||"")+(a.grp?" · "+esc(a.grp):"")+(a.by?" · "+esc(a.by):"")+(REAL==="dev"?'<button class="x" data-delatt="'+esc(a.id)+'" style="float:left;font-size:12px;color:#dc2626;margin-left:6px">🗑 حذف</button>':'')+'<br><span style="color:#16a34a">حاضر: '+pc+'</span> · <span style="color:#dc2626">غائب: '+ac+'</span><span class="log-time" style="float:left">'+(a.ts?new Date(a.ts).toLocaleDateString("ar",{day:"numeric",month:"short"}):"")+'</span></div>';
     });
     h+='</div>';
   }
@@ -962,6 +962,7 @@ $("view").onclick=function(e){var gt=e.target.closest&&e.target.closest("[data-g
   var ab=e.target.closest&&e.target.closest("[data-att]");if(ab){var ap=ab.dataset.att.split(":");S.attMarks[ap[0]]=S.attMarks[ap[0]]===ap[1]?"":ap[1];S.attSaved=false;render();return}
   if(e.target.id==="saveAtt"){saveAttendance();return}
   if(e.target.id==="exportAtt"){exportAttendance();return}
+  var da=e.target.closest&&e.target.closest("[data-delatt]");if(da){var aid=da.dataset.delatt;twoTap("delatt"+aid,function(){if(db)db.collection("attendance").doc(aid).delete().then(function(){toast("تم حذف سجل الحضور");logActivity("delete_attendance","حذف سجل حضور")}).catch(fail)});return}
 };
 $("view").onchange=function(e){var i=e.target.id,fm=e.target.form;if(fm&&fm.dataset.f==="rep"){var el0=fm.elements;S.rr={name:el0["name"].value,dept:el0.dept.value,stage:el0.stage.value,grp:el0.grp.value};if(e.target.name==="stage")S.rr.grp="";render();return}if(fm&&fm.dataset.f==="reg"){var el=fm.elements;S.reg={fac:el.fac.value,dept:el.dept.value,stage:el.stage.value,grp:el.grp.value};if(e.target.name==="fac")S.reg.dept=depsOf(S.reg.fac).length?"":S.reg.fac;if(e.target.name==="stage")S.reg.grp="";render();return}if(i==="fd"||i==="fs"||i==="fg"){FL[{fd:"dept",fs:"stage",fg:"grp"}[i]]=e.target.value;try{localStorage.setItem("fl",JSON.stringify(FL))}catch(x){}render()}if(i==="attDate"){S.attDate=e.target.value;S.attMarks={};S.attSaved=false;render()}if(i==="attStage"){S.attStage=e.target.value;S.attMarks={};S.attSaved=false;render()}if(i==="attGrp"){S.attGrp=e.target.value;S.attMarks={};S.attSaved=false;render()}};
 $("view").onsubmit=function(e){
