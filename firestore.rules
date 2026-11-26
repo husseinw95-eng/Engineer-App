@@ -49,13 +49,13 @@ service cloud.firestore {
       allow create: if isDev() || ((isDev() || isHead()) && request.resource.data.role == 'rep')
         || (request.auth != null && request.auth.uid == uid
             && exists(/databases/$(db)/documents/adminInvites/$(request.auth.token.email)));
-      allow update: if isDev();
-      allow delete: if isDev() && uid != request.auth.uid;
+      allow update: if isDev() || (isHead() && resource.data.role != 'dev');
+      allow delete: if (isDev() || isHead()) && uid != request.auth.uid && resource.data.role != 'dev';
     }
 
     // دعوات المستخدمين: المطوّر يُنشئ، المستخدم المدعو يقرأ ويحذف عند التفعيل
     match /adminInvites/{email} {
-      allow read: if isDev() || (request.auth != null && request.auth.token.email == email);
+      allow read: if isDev() || isHead() || (request.auth != null && request.auth.token.email == email);
       allow create, update: if isDev() || isHead();
       allow delete: if isDev() || (request.auth != null && request.auth.token.email == email);
     }

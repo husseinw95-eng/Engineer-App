@@ -215,7 +215,7 @@ if(!window.firebase||!CF||CF.apiKey==="YOUR_API_KEY"){
       var x=d.exists?d.data():null,r=x?(x.role==="dev"?"dev":x.role==="rep"?"rep":x.role==="head"?"head":"prof"):"student";
       if(r==="student"&&u.email){
         db.collection("adminInvites").doc(u.email.toLowerCase()).get().then(function(inv){
-          if(inv.exists){var iv=inv.data();db.collection("admins").doc(u.uid).set({role:iv.role,name:iv.name,email:u.email}).then(function(){db.collection("adminInvites").doc(u.email.toLowerCase()).delete();toast("مرحباً "+iv.name+"! تم تفعيل صلاحية "+(iv.role==="head"?"رئيس قسم / عميد":iv.role==="prof"?"أستاذ":"مطوّر"));setupRole(u,iv.role,{role:iv.role,name:iv.name,email:u.email})}).catch(fail)}
+          if(inv.exists){var iv=inv.data();var adDoc={role:iv.role,name:iv.name,email:u.email};if(iv.role==="rep"){adDoc.stage=iv.stage||"";adDoc.grp=iv.grp||"";adDoc.dept=iv.dept||""}db.collection("admins").doc(u.uid).set(adDoc).then(function(){db.collection("adminInvites").doc(u.email.toLowerCase()).delete();var rlbl={head:"رئيس قسم / عميد",prof:"أستاذ",dev:"مطوّر",rep:"ممثل كروب"};toast("مرحباً "+iv.name+"! تم تفعيل صلاحية "+(rlbl[iv.role]||iv.role));setupRole(u,iv.role,adDoc)}).catch(fail)}
           else setupRole(u,r,x);
         }).catch(function(){setupRole(u,r,x)});
       }else setupRole(u,r,x);
@@ -526,31 +526,47 @@ function repPanel(){
 function adminPanel(){
   if(REAL!=="dev"&&REAL!=="head")return"";
   var isDv=REAL==="dev";
-  var admins=(S.allAdmins||[]).filter(function(a){return a.role!=="rep"&&(isDv||a.role!=="dev")});
-  var roleLabels={dev:"🔧 مطوّر",head:"👔 رئيس قسم / عميد",prof:"📚 أستاذ"};
+  var allList=(S.allAdmins||[]).filter(function(a){return isDv||a.role!=="dev"});
+  var admins=allList.filter(function(a){return a.role!=="rep"});
+  var reps=allList.filter(function(a){return a.role==="rep"});
+  var roleLabels={dev:"🔧 مطوّر",head:"👔 رئيس قسم / عميد",prof:"📚 أستاذ",rep:"🎓 ممثل كروب"};
   var h='<div class="card"><div class="row" style="align-items:center"><div class="t">⚙️ إدارة المستخدمين</div><button class="x" data-admtog="1" style="font-size:14px">'+(S.adminPanel?"▲ إخفاء":"▼ عرض")+'</button></div>';
-  if(!S.adminPanel)return h+'<div class="m">إضافة رئيس قسم أو أستاذ</div></div>';
-  h+='<div class="m" style="margin:8px 0 4px">المستخدمون الحاليون ('+admins.length+')</div>';
+  if(!S.adminPanel)return h+'<div class="m">إدارة الأساتذة والممثلين والصلاحيات</div></div>';
+  // --- قسم الإداريين ---
+  h+='<div class="m" style="margin:8px 0 4px;font-weight:700">👔 الإداريون والأساتذة ('+admins.length+')</div>';
   if(admins.length){
     admins.forEach(function(a){
       var rl=roleLabels[a.role]||a.role;
       var isME=a.id===MYUID;
       var btns="";
-      if(!isME&&isDv)btns='<div style="white-space:nowrap"><button class="x" data-admrole="'+a.id+'" aria-label="تغيير الدور">✏️</button>'+delBtn("adm",a.id)+'</div>';
+      if(!isME&&(isDv||a.role!=="dev"))btns='<div style="white-space:nowrap"><button class="x" data-admrole="'+a.id+'" aria-label="تغيير الدور">✏️</button>'+delBtn("adm",a.id)+'</div>';
       else if(isME)btns='<span class="m" style="font-size:12px">أنت</span>';
       h+='<div class="row" style="padding:8px 0;border-top:1px solid var(--bd);align-items:center"><div><div class="t" style="font-size:15px">'+esc(a.name||"بدون اسم")+' <span class="tg">'+rl+'</span></div><div class="m" style="font-size:12px">'+(a.email?esc(a.email):"")+'</div></div>'+btns+'</div>';
     });
-  }else{
-    h+='<div class="m">لا يوجد مستخدمون بعد.</div>';
-  }
-  h+='<div class="m" style="margin:14px 0 6px;font-weight:700">➕ إضافة مستخدم جديد</div>';
+  }else h+='<div class="m">لا يوجد.</div>';
+  h+='<div class="m" style="margin:14px 0 6px;font-weight:700">➕ إضافة إداري / أستاذ</div>';
   h+='<form class="add" data-f="addAdmin">';
-  h+='<input class="full" name="email" type="email" placeholder="البريد الإلكتروني للمستخدم" required>';
+  h+='<input class="full" name="email" type="email" placeholder="البريد الإلكتروني" required>';
   h+='<input class="full" name="name" placeholder="الاسم الكامل" required>';
   h+='<select name="role" class="full" required><option value="">اختر الدور</option><option value="head">رئيس قسم / عميد</option><option value="prof">أستاذ</option>'+(isDv?'<option value="dev">مطوّر</option>':'')+'</select>';
-  h+='<button class="go full">إضافة المستخدم</button>';
-  h+='</form>';
-  h+='<div class="hint" style="margin-top:8px">⚠️ يجب أن يكون المستخدم قد أنشأ حساباً في التطبيق أولاً (تسجيل دخول بالبريد). سيتم البحث عنه تلقائياً.</div>';
+  h+='<button class="go full">إضافة</button></form>';
+  // --- قسم الممثلين ---
+  h+='<div class="m" style="margin:18px 0 4px;font-weight:700">🎓 ممثلو الكروبات ('+reps.length+')</div>';
+  if(reps.length){
+    reps.forEach(function(a){
+      var info='كروب '+esc(a.grp||"")+(a.stage?' · المرحلة '+esc(a.stage):"")+(a.dept?' · '+esc(a.dept):"");
+      h+='<div class="row" style="padding:8px 0;border-top:1px solid var(--bd);align-items:center"><div><div class="t" style="font-size:15px">'+esc(a.name||"بدون اسم")+'</div><div class="m" style="font-size:12px">'+info+(a.email?'<br>'+esc(a.email):"")+'</div></div><div style="white-space:nowrap">'+delBtn("adm",a.id)+'</div></div>';
+    });
+  }else h+='<div class="m">لا يوجد ممثلون.</div>';
+  h+='<div class="m" style="margin:14px 0 6px;font-weight:700">➕ إضافة ممثل كروب</div>';
+  h+='<form class="add" data-f="addRep">';
+  h+='<input class="full" name="email" type="email" placeholder="البريد الإلكتروني للممثل" required>';
+  h+='<input class="full" name="name" placeholder="الاسم الكامل" required>';
+  h+='<select name="dept"><option value="">القسم (اختياري)</option>'+deptGroups("")+'</select>';
+  h+='<select name="stage" required><option value="">المرحلة *</option>'+opts(STAGES,"")+'</select>';
+  h+='<select name="grp" required><option value="">الكروب *</option>'+opts(groups(),"")+'</select>';
+  h+='<button class="go full">إضافة ممثل</button></form>';
+  h+='<div class="hint" style="margin-top:8px">⚠️ يجب أن يكون المستخدم قد أنشأ حساباً أولاً. سيحصل على صلاحيته تلقائياً عند تسجيل دخوله.</div>';
   return h+'</div>';
 }
 function svg(p){return'<svg viewBox="0 0 24 24" aria-hidden="true">'+p+'</svg>'}
@@ -688,7 +704,7 @@ $("view").onclick=function(e){var gt=e.target.closest&&e.target.closest("[data-g
   else if(d.imptog){S.importing=!S.importing;render()}
   else if(d.impclose){S.importing=false;render()}
   else if(d.admtog){S.adminPanel=!S.adminPanel;render()}
-  else if(d.admrole){var aid=d.admrole;var cur=(S.allAdmins||[]).filter(function(x){return x.id===aid})[0];if(cur){var roles=["head","prof","dev"];var ni=roles.indexOf(cur.role);var nr=roles[(ni+1)%roles.length];if(db)db.collection("admins").doc(aid).update({role:nr}).then(function(){toast("تم تغيير الدور إلى "+(nr==="head"?"رئيس قسم / عميد":nr==="prof"?"أستاذ":"مطوّر"))}).catch(fail)}}
+  else if(d.admrole){var aid=d.admrole;var cur=(S.allAdmins||[]).filter(function(x){return x.id===aid})[0];if(cur){var roles=REAL==="dev"?["head","prof","dev"]:["head","prof"];var ni=roles.indexOf(cur.role);if(ni<0)ni=0;var nr=roles[(ni+1)%roles.length];var rlbl={head:"رئيس قسم / عميد",prof:"أستاذ",dev:"مطوّر"};if(db)db.collection("admins").doc(aid).update({role:nr}).then(function(){toast("تم تغيير الدور إلى "+rlbl[nr])}).catch(fail)}}
   else if(d.hideinst){try{localStorage.setItem("hideInstall","1")}catch(x){}render()}
   else if(d.notif){try{Notification.requestPermission().then(function(){render()})}catch(x){}}
   else if(d.forgot){forgot()}
@@ -708,22 +724,27 @@ $("view").onsubmit=function(e){
   if(col==="addAdmin"){
     if(!o.email||!o.name||!o.role){toast("أكمل كل الحقول");return}
     if(!db)return;
-    toast("⏳ جاري البحث عن المستخدم...");
-    auth.fetchSignInMethodsForEmail(o.email).then(function(methods){
-      db.collection("adminInvites").doc(o.email.toLowerCase()).set({
-        role:o.role,name:o.name,email:o.email.toLowerCase(),invitedBy:MYUID,ts:Date.now()
-      }).then(function(){
-        toast("تم حفظ الدعوة لـ "+o.name+". عند تسجيل دخوله سيحصل على صلاحية "+(o.role==="head"?"رئيس قسم / عميد":o.role==="prof"?"أستاذ":"مطوّر"));
-        f.reset();render();
-      }).catch(fail);
-    }).catch(function(){
-      db.collection("adminInvites").doc(o.email.toLowerCase()).set({
-        role:o.role,name:o.name,email:o.email.toLowerCase(),invitedBy:MYUID,ts:Date.now()
-      }).then(function(){
-        toast("تم حفظ الدعوة. عند إنشاء حساب بهذا البريد وتسجيل الدخول سيحصل على الصلاحية تلقائياً.");
-        f.reset();render();
-      }).catch(fail);
-    });
+    toast("⏳ جاري إضافة المستخدم...");
+    db.collection("adminInvites").doc(o.email.toLowerCase()).set({
+      role:o.role,name:o.name,email:o.email.toLowerCase(),invitedBy:MYUID,ts:Date.now()
+    }).then(function(){
+      toast("تم حفظ الدعوة لـ "+o.name+". عند تسجيل دخوله سيحصل على الصلاحية تلقائياً.");
+      f.reset();render();
+    }).catch(fail);
+    return;
+  }
+  if(col==="addRep"){
+    if(!o.email||!o.name||!o.stage||!o.grp){toast("أكمل الحقول المطلوبة (البريد، الاسم، المرحلة، الكروب)");return}
+    if(!db)return;
+    toast("⏳ جاري إضافة الممثل...");
+    db.collection("adminInvites").doc(o.email.toLowerCase()).set({
+      role:"rep",name:o.name,email:o.email.toLowerCase(),
+      stage:o.stage,grp:o.grp,dept:o.dept||"",
+      invitedBy:MYUID,ts:Date.now()
+    }).then(function(){
+      toast("تم حفظ دعوة الممثل "+o.name+". سيحصل على الصلاحية عند تسجيل دخوله.");
+      f.reset();render();
+    }).catch(fail);
     return;
   }
   if(col==="importList"){
