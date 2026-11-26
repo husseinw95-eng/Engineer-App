@@ -238,7 +238,7 @@ function loginCard(){
   if(!S.login)return u;
   if(cu)return u+acctCard(cu);
   var isReg=S.signupMode;
-  return u+'<div class="card"><div class="t" style="margin-bottom:8px">'+(isReg?'إنشاء حساب جديد':'تسجيل الدخول')+'</div><form class="add" data-f="login"><input class="full" type="email" name="email" placeholder="البريد الإلكتروني" required><input class="full" type="password" name="pass" placeholder="كلمة المرور" required><button class="go full">'+(isReg?'إنشاء الحساب':'دخول')+'</button>'+(isReg?'<button type="button" class="go full" style="background:var(--mu)" data-signup="1">لدي حساب - تسجيل الدخول</button>':'<button type="button" class="go full" style="background:var(--sec)" data-signup="1">إنشاء حساب جديد</button><button type="button" class="go full" style="background:var(--mu)" data-forgot="1">نسيت كلمة المرور؟</button>')+'</form></div>';
+  return u+'<div class="card"><div class="t" style="margin-bottom:8px">'+(isReg?'إنشاء حساب جديد':'تسجيل الدخول')+'</div><form class="add" data-f="login"><input class="full" type="email" name="email" placeholder="البريد الإلكتروني" required><input class="full" type="password" name="pass" placeholder="كلمة المرور" required><button class="go full">'+(isReg?'إنشاء الحساب':'دخول')+'</button>'+(isReg?'<button type="button" class="go full" style="background:#666" data-signup="1">لدي حساب - تسجيل الدخول</button>':'<button type="button" class="go full" style="background:#0f7b4f" data-signup="1">إنشاء حساب جديد</button><button type="button" class="go full" style="background:var(--mu)" data-forgot="1">نسيت كلمة المرور؟</button>')+'</form></div>';
 }
 function authMsg(e){
   var c=(e&&e.code)||"";
