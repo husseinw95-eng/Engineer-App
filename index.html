@@ -164,7 +164,7 @@ function unread(){var r=readSet();return S.notes.filter(match).filter(function(n
 var SEED={courses:[],exams:[],notes:[]};
 try{SEED=JSON.parse($("data").textContent)}catch(e){}
 var APP_VERSION=1,REAL="student",MYNAME="",MYUID="",REPINFO={},UNSUBS=[],PT=null,db=null,auth=null;
-S.reqs=[];S.reps=[];S.allAdmins=[];S.myReq=null;S.pend=null;S.rr=null;S.students=[];S.adminPanel=false;S.signupMode=false;
+S.reqs=[];S.reps=[];S.allAdmins=[];S.myReq=null;S.pend=null;S.rr=null;S.students=[];S.adminPanel=false;S.signupMode=false;S.stdQ="";
 function toast(m){var t=document.getElementById("toast");if(!t){t=document.createElement("div");t.id="toast";t.className="toast";document.body.appendChild(t)}t.textContent=m;t.style.display="block";clearTimeout(t._t);t._t=setTimeout(function(){t.style.display="none"},3500)}
 function twoTap(k,fn){if(S.pend===k){S.pend=null;clearTimeout(PT);fn();render();return}S.pend=k;render();clearTimeout(PT);PT=setTimeout(function(){S.pend=null;render()},4000)}
 function delBtn(c,id){return S.pend===c+id?'<button class="x cf" data-d="'+c+'" data-id="'+id+'">تأكيد الحذف؟</button>':'<button class="x" data-d="'+c+'" data-id="'+id+'" aria-label="حذف">🗑</button>'}
@@ -463,6 +463,20 @@ function parseImportFile(file){
 function studentsView(){
   var h="";
   var list=S.students.sort(function(a,b){return(a.name||"")>(b.name||"")?1:-1});
+  // شريط البحث
+  h+='<div style="margin-bottom:10px"><input id="stdSearch" class="full" type="search" placeholder="🔍 بحث عن طالب بالاسم..." oninput="S.stdQ=this.value;render()" value="'+(S.stdQ?esc(S.stdQ):"")+'" style="margin:0"></div>';
+  if(S.stdQ&&S.stdQ.trim()){
+    var q=S.stdQ.trim().toLowerCase();
+    var results=list.filter(function(s){return(s.name||"").toLowerCase().indexOf(q)>=0});
+    h+='<div class="m" style="margin-bottom:8px">نتائج البحث: '+results.length+' طالب</div>';
+    if(results.length){
+      results.forEach(function(s,i){
+        var btns=can("students")?acts("students",s.id):"";
+        h+='<div class="card" style="padding:10px 14px"><div class="row"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="background:var(--pr);color:#fff;border-radius:50%;min-width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">'+(i+1)+'</span><span class="t" style="font-size:15px">'+esc(s.name)+'</span></div><div class="m" style="margin-top:4px;padding-right:36px">المرحلة '+esc(s.stage||"?")+' · كروب '+esc(s.grp||"—")+(s.phone?' · 📱 <a href="tel:'+esc(s.phone)+'" style="color:var(--pr)">'+esc(s.phone)+'</a>':'')+'</div></div>'+(btns?'<div style="white-space:nowrap">'+btns+'</div>':'')+'</div></div>';
+      });
+    }else h+='<div class="empty">لا يوجد طالب بهذا الاسم</div>';
+    return h;
+  }
   var grps={};
   list.forEach(function(s){var k=(s.stage||"?")+"|||"+(s.grp||"—");if(!grps[k])grps[k]=[];grps[k].push(s)});
   var keys=Object.keys(grps).sort();
@@ -675,6 +689,7 @@ function render(){
   if(S.tab==="home")h+=previewBar()+edAlert+(S.role==="student"?welcomeCard()+meBar()+installCard()+notifCard()+nearBanner()+quickCards():"")+homeTiles()+adminPanel();
   else h+=secHead(S.tab)+edAlert+(S.role==="student"||S.tab==="students"?"":filterBar())+(S.tab==="sched"?schedView():S.tab==="today"?todayView():S.tab==="exams"?examsView():S.tab==="students"?studentsView():notesView());
   $("view").innerHTML=h;
+  var sf=document.getElementById("stdSearch");if(sf&&S.stdQ){sf.value=S.stdQ;sf.focus();sf.setSelectionRange(S.stdQ.length,S.stdQ.length)}
   var impF=$("impFile");if(impF)impF.onchange=function(){if(impF.files[0])parseImportFile(impF.files[0])};
   renderNav();
 }
