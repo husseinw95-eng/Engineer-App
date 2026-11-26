@@ -201,7 +201,7 @@ function unread(){var r=readSet();return S.notes.filter(match).filter(function(n
 var SEED={courses:[],exams:[],notes:[]};
 try{SEED=JSON.parse($("data").textContent)}catch(e){}
 var APP_VERSION=1,REAL="student",MYNAME="",MYUID="",REPINFO={},UNSUBS=[],PT=null,db=null,auth=null;
-S.reqs=[];S.reps=[];S.allAdmins=[];S.myReq=null;S.pend=null;S.rr=null;S.students=[];S.adminPanel=false;S.signupMode=false;S.stdQ="";S.actLog=[];S.statsTab="overview";S.attendance=[];S.attDate=new Date().toISOString().slice(0,10);S.attMarks={};S.attSaved=false;S.attStage="";S.attGrp="";
+S.reqs=[];S.reps=[];S.allAdmins=[];S.myReq=null;S.pend=null;S.rr=null;S.students=[];S.adminPanel=false;S.signupMode=false;S.stdQ="";S.actLog=[];S.lectures=[];S.statsTab="overview";S.attendance=[];S.attDate=new Date().toISOString().slice(0,10);S.attMarks={};S.attSaved=false;S.attStage="";S.attGrp="";
 try{var _st=localStorage.getItem("curTab");if(_st)S.tab=_st}catch(e){}
 function toast(m){var t=document.getElementById("toast");if(!t){t=document.createElement("div");t.id="toast";t.className="toast";document.body.appendChild(t)}t.textContent=m;t.style.display="block";clearTimeout(t._t);t._t=setTimeout(function(){t.style.display="none"},3500)}
 function twoTap(k,fn){if(S.pend===k){S.pend=null;clearTimeout(PT);fn();render();return}S.pend=k;render();clearTimeout(PT);PT=setTimeout(function(){S.pend=null;render()},4000)}
@@ -272,6 +272,7 @@ if(!window.firebase||!CF||CF.apiKey==="YOUR_API_KEY"){
   firebase.initializeApp(CF);db=firebase.firestore();auth=firebase.auth();
   db.enablePersistence({synchronizeTabs:true}).catch(function(){});
   ["courses","exams","notes"].forEach(function(c){db.collection(c).onSnapshot(function(s){S[c]=s.docs.map(function(d){var o=d.data();o.id=d.id;return o});if(c==="exams"||c==="notes")checkNew(c);render()},function(){})});
+  db.collection("lectures").orderBy("ts","desc").limit(200).onSnapshot(function(q){S.lectures=q.docs.map(function(z){var o=z.data();o.id=z.id;return o});render()},function(){S.lectures=[]});
   db.collection("meta").doc("app").onSnapshot(function(d){var x=d.data()||{};S.upd=(x.latest>APP_VERSION)?x:null;render()},function(){});
   auth.onAuthStateChanged(function(u){
     UNSUBS.forEach(function(f){try{f()}catch(e){}});UNSUBS=[];S.myReq=null;S.reqs=[];S.reps=[];S.allAdmins=[];S.students=[];S.adminPanel=false;REPINFO={};MYUID=u?u.uid:"";
@@ -369,7 +370,7 @@ function filterBar(){
   return'<div class="fl"><select id="fd"><option value="">كل الأقسام</option>'+deptGroups(FL.dept)+'</select><select id="fs"><option value="">كل المراحل</option>'+opts(STAGES,FL.stage)+'</select><select id="fg"><option value="">كل الشعب</option>'+opts(groups(),FL.grp)+'</select></div>'+(FL.stage?"":'<div class="hint">اختر مرحلتك وشعبتك من القوائم أعلاه لعرض جدولك فقط.</div>')+'<datalist id="depts">'+ds.map(function(d){return'<option value="'+esc(d)+'">'}).join("")+'</datalist>';
 }
 function tg(x){var st=S.role==="student";return(x.grp?'<span class="tg">'+esc(x.grp)+'</span>':"")+(x.dept&&!st?'<span class="tg">'+esc(x.dept)+'</span>':"")+(x.stage&&!st?'<span class="tg">المرحلة '+esc(x.stage)+'</span>':"")}
-function can(col){var v=S.view;return v==="dev"||(v==="prof"&&col!=="courses"&&col!=="students")||(v==="head"&&col!=="courses")||(v==="rep"&&col==="notes")}
+function can(col){var v=S.view;return v==="dev"||(v==="prof"&&col!=="courses"&&col!=="students")||(v==="head"&&col!=="courses")||(v==="rep"&&(col==="notes"||col==="lectures"))}
 function acts(c,id){
   if(!can(c))return"";
   if(S.view==="rep"){var r=S[c].filter(function(x){return x.id===id})[0]||{};return r.uid&&r.uid===MYUID?delBtn(c,id):""}
@@ -668,6 +669,7 @@ var IC={
 IC.notes=IC.bell;
 IC.students=svg('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>');
 IC.att=svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>');
+IC.lec=svg('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h6"/>');
 IC.stats=svg('<path d="M18 20V10M12 20V4M6 20v-6"/>');
 IC.log=svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>');
 var SEC={
@@ -676,6 +678,7 @@ var SEC={
  exams:{t:"الامتحانات",c:"linear-gradient(135deg,#5b45d6,#3b2aa5)"},
  notes:{t:"التبليغات",c:"linear-gradient(135deg,#14235a,#2d4297)"},
  students:{t:"قوائم الطلاب",c:"linear-gradient(135deg,#0f7b4f,#065f38)"},
+ lec:{t:"المحاضرات",c:"linear-gradient(135deg,#b45309,#92400e)"},
  att:{t:"الحضور والغياب",c:"linear-gradient(135deg,#059669,#047857)"},
  stats:{t:"الإحصائيات",c:"linear-gradient(135deg,#f59e0b,#d97706)"},
  log:{t:"سجل النشاطات",c:"linear-gradient(135deg,#7c3aed,#5b21b6)"}
@@ -724,6 +727,45 @@ function quickCards(){
   if(up.length){var d=daysLeft(up[0]);h+='<div class="ql">أقرب امتحان</div><div class="qv">'+esc(up[0].course)+'</div><div class="m" style="font-size:12px">'+(d===0?"اليوم":d===1?"غدًا":"بعد "+d+" أيام")+'</div>'}
   else h+='<div class="ql">الامتحانات</div><div class="qv">لا توجد قريباً</div>';
   h+='</div></div>';
+  return h;
+}
+function lecturesView(){
+  var h="";
+  if(can("lectures")){
+    var ed=S.edit&&S.edit.col==="lectures"?S.lectures.filter(function(x){return x.id===S.edit.id})[0]:null;
+    var v=ed||{};
+    h+='<div class="card"><div class="t" style="margin-bottom:8px">'+(ed?"✏️ تعديل":"📤 رفع")+" محاضرة</div>";
+    h+='<form class="add" data-f="lectures">';
+    h+='<input class="full" name="title" placeholder="عنوان المحاضرة (مثل: محاضرة قواعد البيانات الفصل 3)" value="'+esc(v.title||"")+'" required>';
+    h+='<input class="full" name="subject" placeholder="اسم المادة" value="'+esc(v.subject||"")+'" required>';
+    if(S.view==="rep"){
+      h+='<input type="hidden" name="stage" value="'+esc(REPINFO.stage||"")+'">';
+      h+='<input type="hidden" name="grp" value="'+esc(REPINFO.grp||"")+'">';
+    }else{
+      h+='<select class="full" name="stage"><option value="">كل المراحل</option>';
+      STAGES.forEach(function(s,i){h+='<option value="'+(i+1)+'"'+(v.stage==String(i+1)?" selected":"")+'>'+s+'</option>'});
+      h+='</select>';
+      h+='<input class="full" name="grp" placeholder="الكروب (اختياري)" value="'+esc(v.grp||"")+'">';
+    }
+    h+='<div class="full"><label class="m" style="display:block;margin-bottom:4px">📎 ملف PDF</label>';
+    h+='<input type="file" id="lecFile" accept="application/pdf" style="width:100%;padding:6px;border:2px dashed var(--bd);border-radius:10px;background:var(--bg);font-size:13px"'+(ed?"":' required')+'>';
+    if(ed&&v.file){h+='<div style="margin-top:6px;display:flex;align-items:center;gap:8px;padding:8px;background:#fef3c7;border-radius:8px"><span style="font-size:20px">📄</span><span>'+esc(v.fileName||"ملف PDF")+'</span></div>'}
+    h+='</div>';
+    h+='<button class="go full">'+(ed?"💾 حفظ التعديل":"📤 رفع المحاضرة")+"</button>";
+    if(ed)h+='<button type="button" class="go full" style="background:var(--bd);color:var(--fg)" onclick="S.edit=null;render()">إلغاء</button>';
+    h+="</form></div>";
+  }
+  var all=S.lectures.filter(match);
+  if(!all.length)return h+'<div class="empty">لا توجد محاضرات مرفوعة بعد.</div>';
+  all.forEach(function(l){
+    var canDel=REAL==="dev"||REAL==="head"||(REAL==="prof"&&l.uid===MYUID)||(REAL==="rep"&&l.uid===MYUID);
+    var canEdit=REAL==="dev"||(REAL==="prof"&&l.uid===MYUID)||(REAL==="rep"&&l.uid===MYUID);
+    h+='<div class="card"><div class="row"><div><div class="t">📄 '+esc(l.title)+tg(l)+'</div>';
+    h+='<div class="m">'+esc(l.subject||"")+(l.by?" · "+esc(l.by):"")+(l.ts?" · "+new Date(l.ts).toLocaleDateString("ar",{day:"numeric",month:"short"}):"")+'</div></div>';
+    h+='<div>'+(canEdit?'<button class="x" data-e="lectures" data-id="'+esc(l.id)+'" style="font-size:13px">✏️</button>':'')+(canDel?delBtn("lectures",l.id):"")+'</div></div>';
+    h+='<div style="margin-top:8px"><a href="'+esc(l.file)+'" download="'+esc(l.fileName||"محاضرة.pdf")+'" style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:linear-gradient(135deg,#b45309,#92400e);color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px"><span style="font-size:22px">📥</span> تحميل '+esc(l.fileName||"PDF")+'</a></div>';
+    h+='</div>';
+  });
   return h;
 }
 function attendanceView(){
@@ -860,7 +902,7 @@ function statsView(){
 function actLogView(){
   var logs=S.actLog||[];
   if(!logs.length)return'<div class="empty">لا يوجد نشاط مسجّل بعد.</div>';
-  var actLabels={add_courses:"➕ إضافة مادة",add_exams:"➕ إضافة امتحان",add_notes:"📢 إضافة تبليغ",add_students:"➕ إضافة طالب",delete_note:"🗑 حذف تبليغ",delete_admin:"🗑 حذف مستخدم",delete_courses:"🗑 حذف مادة",delete_exams:"🗑 حذف امتحان",delete_students:"🗑 حذف طالب",delete_attendance:"🗑 حذف حضور","export":"📊 تصدير",attendance:"📋 تسجيل حضور"};
+  var actLabels={add_courses:"➕ إضافة مادة",add_exams:"➕ إضافة امتحان",add_notes:"📢 إضافة تبليغ",add_students:"➕ إضافة طالب",delete_note:"🗑 حذف تبليغ",delete_admin:"🗑 حذف مستخدم",delete_courses:"🗑 حذف مادة",delete_exams:"🗑 حذف امتحان",delete_students:"🗑 حذف طالب",delete_attendance:"🗑 حذف حضور",add_lectures:"📤 رفع محاضرة",delete_lectures:"🗑 حذف محاضرة","export":"📊 تصدير",attendance:"📋 تسجيل حضور"};
   var h='<div class="card">';
   logs.forEach(function(l){
     var act=actLabels[l.action]||l.action;
@@ -881,7 +923,9 @@ function homeTiles(){
   var stCount=S.students.length;
   var attCount=S.attendance.filter(function(a){return a.date===new Date().toISOString().slice(0,10)}).length;
   var info={sched:cs.length+" محاضرة",today:td?td+" محاضرات اليوم":"لا توجد اليوم",exams:ex,notes:S.role==="student"?(u?u+" جديد":"لا جديد"):nt+" تبليغ",students:stCount+" طالب",att:attCount?attCount+" سجل اليوم":"تسجيل الحضور",stats:"لوحة البيانات",log:(S.actLog||[]).length+" نشاط"};
-  var tiles=["today","sched","notes","exams"];
+  var lecCount=S.lectures.filter(match).length;
+  info.lec=lecCount?lecCount+" ملف":"لا توجد ملفات";
+  var tiles=["today","sched","lec","notes","exams"];
   if(S.role!=="student"&&S.role!=="rep")tiles.push("students");
   if(REAL==="dev"||REAL==="prof"||REAL==="head")tiles.push("att");
   if(REAL==="dev"||REAL==="head"){tiles.push("stats");tiles.push("log")}
@@ -908,8 +952,8 @@ function render(){
   var h=loginCard();
   if(S.view==="head")edAlert='<div class="alert" style="background:var(--pr2);color:var(--pr)">رئيس القسم / العميد: يمكنك تعديل الامتحانات والتبليغات وقوائم الطلاب.</div>';
   if(S.view==="rep")edAlert='<div class="alert" style="background:var(--pr2);color:var(--pr)">ممثل كروب: يمكنك نشر تبليغات لكروبك وحذفها.</div>';
-  if(S.tab==="home")h+=previewBar()+edAlert+(S.role==="student"?welcomeCard()+meBar()+installCard()+notifCard()+nearBanner()+quickCards():"")+homeTiles()+adminPanel();
-  else{var inner=S.tab==="sched"?schedView():S.tab==="today"?todayView():S.tab==="exams"?examsView():S.tab==="students"?studentsView():S.tab==="att"?attendanceView():S.tab==="stats"?statsView():S.tab==="log"?actLogView():notesView();
+  if(S.tab==="home")h+=previewBar()+edAlert+(S.role==="student"?welcomeCard()+meBar()+installCard()+notifCard()+nearBanner():"")+homeTiles()+adminPanel();
+  else{var inner=S.tab==="sched"?schedView():S.tab==="today"?todayView():S.tab==="exams"?examsView():S.tab==="lec"?lecturesView():S.tab==="students"?studentsView():S.tab==="att"?attendanceView():S.tab==="stats"?statsView():S.tab==="log"?actLogView():notesView();
   h+=secHead(S.tab)+edAlert+(S.role==="student"||S.tab==="students"||S.tab==="att"||S.tab==="stats"||S.tab==="log"?"":filterBar())+'<div class="page-enter">'+inner+'</div>';}
   $("view").innerHTML=h;
   var sf=document.getElementById("stdSearch");if(sf&&S.stdQ){sf.value=S.stdQ;sf.focus();sf.setSelectionRange(S.stdQ.length,S.stdQ.length)}
@@ -1035,6 +1079,23 @@ $("view").onsubmit=function(e){
       rd.onload=function(ev){o.attachment=ev.target.result;if(S.edit&&S.edit.col==="notes"){save("notes",S.edit.id,o)}else{add("notes",o)}};
       rd.readAsDataURL(file);return;
     }
+  }
+  if(col==="lectures"){
+    if(S.view==="rep"){o.stage=REPINFO.stage||"";o.grp=REPINFO.grp||"";o.dept=REPINFO.dept||"";o.by=repLabel()}
+    else if(MYNAME)o.by=MYNAME;
+    o.uid=MYUID;o.ts=Date.now();
+    var lecIn=$("lecFile");
+    if(lecIn&&lecIn.files&&lecIn.files[0]){
+      var lf=lecIn.files[0];
+      if(lf.type!=="application/pdf"){toast("يرجى اختيار ملف PDF فقط");return}
+      if(lf.size>1500000){toast("حجم الملف كبير جداً (الحد 1.5MB)");return}
+      toast("⏳ جاري رفع المحاضرة...");
+      var rd2=new FileReader();
+      rd2.onload=function(ev){o.file=ev.target.result;o.fileName=lf.name;if(S.edit&&S.edit.col==="lectures"){save("lectures",S.edit.id,o)}else{add("lectures",o);logActivity("add_lectures","رفع محاضرة: "+o.title)}};
+      rd2.readAsDataURL(lf);return;
+    }
+    if(S.edit&&S.edit.col==="lectures"){var oldL=S.lectures.filter(function(x){return x.id===S.edit.id})[0]||{};if(oldL.file){o.file=oldL.file;o.fileName=oldL.fileName}save("lectures",S.edit.id,o);return}
+    toast("يرجى اختيار ملف PDF");return;
   }
   add(col,o);
 };
