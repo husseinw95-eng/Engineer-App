@@ -164,7 +164,7 @@ function unread(){var r=readSet();return S.notes.filter(match).filter(function(n
 var SEED={courses:[],exams:[],notes:[]};
 try{SEED=JSON.parse($("data").textContent)}catch(e){}
 var APP_VERSION=1,REAL="student",MYNAME="",MYUID="",REPINFO={},UNSUBS=[],PT=null,db=null,auth=null;
-S.reqs=[];S.reps=[];S.allAdmins=[];S.myReq=null;S.pend=null;S.rr=null;S.students=[];S.adminPanel=false;
+S.reqs=[];S.reps=[];S.allAdmins=[];S.myReq=null;S.pend=null;S.rr=null;S.students=[];S.adminPanel=false;S.signupMode=false;
 function toast(m){var t=document.getElementById("toast");if(!t){t=document.createElement("div");t.id="toast";t.className="toast";document.body.appendChild(t)}t.textContent=m;t.style.display="block";clearTimeout(t._t);t._t=setTimeout(function(){t.style.display="none"},3500)}
 function twoTap(k,fn){if(S.pend===k){S.pend=null;clearTimeout(PT);fn();render();return}S.pend=k;render();clearTimeout(PT);PT=setTimeout(function(){S.pend=null;render()},4000)}
 function delBtn(c,id){return S.pend===c+id?'<button class="x cf" data-d="'+c+'" data-id="'+id+'">تأكيد الحذف؟</button>':'<button class="x" data-d="'+c+'" data-id="'+id+'" aria-label="حذف">🗑</button>'}
@@ -237,15 +237,19 @@ function loginCard(){
   var cu=auth&&auth.currentUser;
   if(!S.login)return u;
   if(cu)return u+acctCard(cu);
-  return u+'<div class="card"><div class="t" style="margin-bottom:8px">تسجيل الدخول</div><form class="add" data-f="login"><input class="full" type="email" name="email" placeholder="البريد الإلكتروني" required><input class="full" type="password" name="pass" placeholder="كلمة المرور" required><button class="go full">دخول</button><button type="button" class="go full" style="background:var(--mu)" data-forgot="1">نسيت كلمة المرور؟</button></form></div>';
+  var isReg=S.signupMode;
+  return u+'<div class="card"><div class="t" style="margin-bottom:8px">'+(isReg?'إنشاء حساب جديد':'تسجيل الدخول')+'</div><form class="add" data-f="login"><input class="full" type="email" name="email" placeholder="البريد الإلكتروني" required><input class="full" type="password" name="pass" placeholder="كلمة المرور" required><button class="go full">'+(isReg?'إنشاء الحساب':'دخول')+'</button>'+(isReg?'<button type="button" class="go full" style="background:var(--mu)" data-signup="1">لدي حساب - تسجيل الدخول</button>':'<button type="button" class="go full" style="background:var(--sec)" data-signup="1">إنشاء حساب جديد</button><button type="button" class="go full" style="background:var(--mu)" data-forgot="1">نسيت كلمة المرور؟</button>')+'</form></div>';
 }
 function authMsg(e){
   var c=(e&&e.code)||"";
+  if(/email-already-in-use/.test(c))return"هذا البريد مسجّل مسبقاً. جرّب تسجيل الدخول بدلاً من إنشاء حساب.";
+  if(/weak-password/.test(c))return"كلمة المرور ضعيفة. يجب أن تكون 6 أحرف على الأقل.";
+  if(/invalid-email/.test(c))return"البريد الإلكتروني غير صحيح.";
   if(/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c))return"البريد أو كلمة المرور غير صحيحة. جرّب لوحة مفاتيح إنجليزية أو اضغط نسيت كلمة المرور.";
   if(/operation-not-allowed/.test(c))return"تسجيل الدخول بالبريد غير مفعّل في Firebase (Authentication ← Sign-in method).";
   if(/too-many-requests/.test(c))return"محاولات كثيرة. انتظر قليلاً ثم أعد المحاولة.";
   if(/network/.test(c))return"لا يوجد اتصال بالإنترنت.";
-  return"تعذّر الدخول: "+c;
+  return"تعذّر: "+c;
 }
 function forgot(){
   var el=document.querySelector('form[data-f="login"] input[name="email"]');
@@ -707,6 +711,7 @@ $("view").onclick=function(e){var gt=e.target.closest&&e.target.closest("[data-g
   else if(d.admrole){var aid=d.admrole;var cur=(S.allAdmins||[]).filter(function(x){return x.id===aid})[0];if(cur){var roles=REAL==="dev"?["head","prof","dev"]:["head","prof"];var ni=roles.indexOf(cur.role);if(ni<0)ni=0;var nr=roles[(ni+1)%roles.length];var rlbl={head:"رئيس قسم / عميد",prof:"أستاذ",dev:"مطوّر"};if(db)db.collection("admins").doc(aid).update({role:nr}).then(function(){toast("تم تغيير الدور إلى "+rlbl[nr])}).catch(fail)}}
   else if(d.hideinst){try{localStorage.setItem("hideInstall","1")}catch(x){}render()}
   else if(d.notif){try{Notification.requestPermission().then(function(){render()})}catch(x){}}
+  else if(d.signup){S.signupMode=!S.signupMode;render()}
   else if(d.forgot){forgot()}
   else if(d.addc!==undefined){S.addOpen=d.addc==="1";render()}
   else if(d.reg){S.regOpen=true;S.reg={fac:ME.fac||facOf(ME.dept),dept:ME.dept||"",stage:ME.stage||"",grp:ME.grp||""};render()}
@@ -717,7 +722,7 @@ $("view").onsubmit=function(e){
   e.preventDefault();var f=e.target,col=f.dataset.f,o={};
   Array.prototype.forEach.call(f.elements,function(x){if(x.name)o[x.name]=x.value.trim()});
   if(col==="reg"){saveMe(o);S.reg=null;S.regOpen=false;render();return}
-  if(col==="login"){auth.signInWithEmailAndPassword(o.email,o.pass).catch(function(e){toast(authMsg(e))});return}
+  if(col==="login"){if(S.signupMode){auth.createUserWithEmailAndPassword(o.email,o.pass).then(function(){toast("تم إنشاء الحساب بنجاح ✅");S.signupMode=false}).catch(function(e){toast(authMsg(e))});return}auth.signInWithEmailAndPassword(o.email,o.pass).catch(function(e){toast(authMsg(e))});return}
   if(S.edit&&S.edit.col===col){var k=col==="notes"?"from":"by",old=S[col].filter(function(x){return x.id===S.edit.id})[0]||{};if(MYNAME&&!old[k])o[k]=MYNAME;save(col,S.edit.id,o);return}
   if(col==="rep"){var cu=auth&&auth.currentUser;if(!cu)return;if(!o.name||!o.dept||!o.stage||!o.grp){toast("أكمل كل الحقول");return}
     db.collection("repRequests").doc(cu.uid).set({name:o.name,dept:o.dept,stage:o.stage,grp:o.grp,email:cu.email||"",status:"pending",ts:Date.now()}).then(function(){S.rr=null;toast("أُرسل طلبك وبانتظار الموافقة")}).catch(fail);return}
