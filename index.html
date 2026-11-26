@@ -525,17 +525,18 @@ function repPanel(){
 }
 function adminPanel(){
   if(REAL!=="dev"&&REAL!=="head")return"";
-  var admins=(S.allAdmins||[]).filter(function(a){return a.role!=="rep"});
+  var isDv=REAL==="dev";
+  var admins=(S.allAdmins||[]).filter(function(a){return a.role!=="rep"&&(isDv||a.role!=="dev")});
   var roleLabels={dev:"🔧 مطوّر",head:"👔 رئيس قسم / عميد",prof:"📚 أستاذ"};
   var h='<div class="card"><div class="row" style="align-items:center"><div class="t">⚙️ إدارة المستخدمين</div><button class="x" data-admtog="1" style="font-size:14px">'+(S.adminPanel?"▲ إخفاء":"▼ عرض")+'</button></div>';
-  if(!S.adminPanel)return h+'<div class="m">إضافة عميد أو رئيس قسم أو أستاذ</div></div>';
+  if(!S.adminPanel)return h+'<div class="m">إضافة رئيس قسم أو أستاذ</div></div>';
   h+='<div class="m" style="margin:8px 0 4px">المستخدمون الحاليون ('+admins.length+')</div>';
   if(admins.length){
     admins.forEach(function(a){
       var rl=roleLabels[a.role]||a.role;
       var isME=a.id===MYUID;
       var btns="";
-      if(!isME&&REAL==="dev")btns='<div style="white-space:nowrap"><button class="x" data-admrole="'+a.id+'" aria-label="تغيير الدور">✏️</button>'+delBtn("adm",a.id)+'</div>';
+      if(!isME&&isDv)btns='<div style="white-space:nowrap"><button class="x" data-admrole="'+a.id+'" aria-label="تغيير الدور">✏️</button>'+delBtn("adm",a.id)+'</div>';
       else if(isME)btns='<span class="m" style="font-size:12px">أنت</span>';
       h+='<div class="row" style="padding:8px 0;border-top:1px solid var(--bd);align-items:center"><div><div class="t" style="font-size:15px">'+esc(a.name||"بدون اسم")+' <span class="tg">'+rl+'</span></div><div class="m" style="font-size:12px">'+(a.email?esc(a.email):"")+'</div></div>'+btns+'</div>';
     });
@@ -546,7 +547,7 @@ function adminPanel(){
   h+='<form class="add" data-f="addAdmin">';
   h+='<input class="full" name="email" type="email" placeholder="البريد الإلكتروني للمستخدم" required>';
   h+='<input class="full" name="name" placeholder="الاسم الكامل" required>';
-  h+='<select name="role" class="full" required><option value="">اختر الدور</option><option value="head">رئيس قسم / عميد</option><option value="prof">أستاذ</option><option value="dev">مطوّر</option></select>';
+  h+='<select name="role" class="full" required><option value="">اختر الدور</option><option value="head">رئيس قسم / عميد</option><option value="prof">أستاذ</option>'+(isDv?'<option value="dev">مطوّر</option>':'')+'</select>';
   h+='<button class="go full">إضافة المستخدم</button>';
   h+='</form>';
   h+='<div class="hint" style="margin-top:8px">⚠️ يجب أن يكون المستخدم قد أنشأ حساباً في التطبيق أولاً (تسجيل دخول بالبريد). سيتم البحث عنه تلقائياً.</div>';
