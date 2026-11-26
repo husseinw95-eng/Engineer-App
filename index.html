@@ -194,7 +194,7 @@ function setupRole(u,r,x){
   }
   if(r==="dev"||r==="head"){
     UNSUBS.push(db.collection("repRequests").onSnapshot(function(q){S.reqs=q.docs.map(function(z){var o=z.data();o.id=z.id;return o});render()},function(){}));
-    if(r==="dev")UNSUBS.push(db.collection("admins").onSnapshot(function(q){var all=q.docs.map(function(z){var o=z.data();o.id=z.id;return o});S.reps=all.filter(function(o){return o.role==="rep"});S.allAdmins=all;render()},function(){}));
+    UNSUBS.push(db.collection("admins").onSnapshot(function(q){var all=q.docs.map(function(z){var o=z.data();o.id=z.id;return o});S.reps=all.filter(function(o){return o.role==="rep"});S.allAdmins=all;render()},function(){}));
   }
   if(r==="student")UNSUBS.push(db.collection("repRequests").doc(u.uid).onSnapshot(function(z){S.myReq=z.exists?z.data():null;render()},function(){}));
   setRole(r);
@@ -524,7 +524,7 @@ function repPanel(){
   return h+'</div>';
 }
 function adminPanel(){
-  if(REAL!=="dev")return"";
+  if(REAL!=="dev"&&REAL!=="head")return"";
   var admins=(S.allAdmins||[]).filter(function(a){return a.role!=="rep"});
   var roleLabels={dev:"🔧 مطوّر",head:"👔 رئيس قسم / عميد",prof:"📚 أستاذ"};
   var h='<div class="card"><div class="row" style="align-items:center"><div class="t">⚙️ إدارة المستخدمين</div><button class="x" data-admtog="1" style="font-size:14px">'+(S.adminPanel?"▲ إخفاء":"▼ عرض")+'</button></div>';
@@ -534,7 +534,10 @@ function adminPanel(){
     admins.forEach(function(a){
       var rl=roleLabels[a.role]||a.role;
       var isME=a.id===MYUID;
-      h+='<div class="row" style="padding:8px 0;border-top:1px solid var(--bd);align-items:center"><div><div class="t" style="font-size:15px">'+esc(a.name||"بدون اسم")+' <span class="tg">'+rl+'</span></div><div class="m" style="font-size:12px">'+(a.email?esc(a.email)+"<br>":"")+'UID: '+esc(a.id)+'</div></div>'+(isME?'<span class="m" style="font-size:12px">أنت</span>':'<div style="white-space:nowrap"><button class="x" data-admrole="'+a.id+'" aria-label="تغيير الدور">✏️</button>'+delBtn("adm",a.id)+'</div>')+'</div>';
+      var btns="";
+      if(!isME&&REAL==="dev")btns='<div style="white-space:nowrap"><button class="x" data-admrole="'+a.id+'" aria-label="تغيير الدور">✏️</button>'+delBtn("adm",a.id)+'</div>';
+      else if(isME)btns='<span class="m" style="font-size:12px">أنت</span>';
+      h+='<div class="row" style="padding:8px 0;border-top:1px solid var(--bd);align-items:center"><div><div class="t" style="font-size:15px">'+esc(a.name||"بدون اسم")+' <span class="tg">'+rl+'</span></div><div class="m" style="font-size:12px">'+(a.email?esc(a.email):"")+'</div></div>'+btns+'</div>';
     });
   }else{
     h+='<div class="m">لا يوجد مستخدمون بعد.</div>';
