@@ -730,8 +730,10 @@ function attendanceView(){
   var h='<div class="card"><div class="t" style="margin-bottom:8px">📋 تسجيل الحضور والغياب</div>';
   h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">';
   h+='<input type="date" id="attDate" value="'+S.attDate+'" style="padding:8px;border:1px solid var(--bd);border-radius:8px;font:inherit;background:var(--bg);color:var(--tx)">';
-  h+='<select id="attStage" style="padding:8px;border:1px solid var(--bd);border-radius:8px;font:inherit;background:var(--bg);color:var(--tx)"><option value="">المرحلة</option>'+opts(STAGES,S.attStage||"")+'</select>';
-  h+='<select id="attGrp" style="padding:8px;border:1px solid var(--bd);border-radius:8px;font:inherit;background:var(--bg);color:var(--tx)"><option value="">الكروب</option>'+opts(groups(),S.attGrp||"")+'</select>';
+  var realStages=S.students.map(function(s){return s.stage||""}).filter(function(v,i,a){return v&&a.indexOf(v)===i}).sort();
+  var realGroups=S.students.filter(function(s){return !S.attStage||s.stage===S.attStage}).map(function(s){return s.grp||""}).filter(function(v,i,a){return v&&a.indexOf(v)===i}).sort();
+  h+='<select id="attStage" style="padding:8px;border:1px solid var(--bd);border-radius:8px;font:inherit;background:var(--bg);color:var(--tx)"><option value="">المرحلة</option>'+opts(realStages,S.attStage||"")+'</select>';
+  h+='<select id="attGrp" style="padding:8px;border:1px solid var(--bd);border-radius:8px;font:inherit;background:var(--bg);color:var(--tx)"><option value="">الكروب</option>'+opts(realGroups,S.attGrp||"")+'</select>';
   h+='</div>';
   var stg=S.attStage||"",grp=S.attGrp||"";
   var allSt=S.students||[];
@@ -740,8 +742,8 @@ function attendanceView(){
     if(grp&&s.grp!==grp)return false;
     return true;
   }).sort(function(a,b){return(a.name||"")>(b.name||"")?1:-1});
-  if(!stg){h+='<div class="empty">اختر المرحلة لعرض الطلاب<br><small style="color:var(--mu)">إجمالي الطلاب المحمّلين: '+allSt.length+'</small></div></div>';return h}
-  if(!list.length){h+='<div class="empty">لا يوجد طلاب في المرحلة "'+esc(stg)+'"'+(grp?' كروب "'+esc(grp)+'"':'')+'<br><small style="color:var(--mu)">إجمالي الطلاب: '+allSt.length+' · المراحل الموجودة: '+allSt.map(function(s){return s.stage||"?"}).filter(function(v,i,a){return a.indexOf(v)===i}).join("، ")+'</small></div></div>';return h}
+  if(!stg){h+='<div class="empty">اختر المرحلة لعرض الطلاب</div></div>';return h}
+  if(!list.length){h+='<div class="empty">لا يوجد طلاب في هذا الفلتر</div></div>';return h}
   var existing=S.attendance.filter(function(a){return a.date===S.attDate&&a.stage===stg&&((!grp)||a.grp===grp)});
   var saved={};existing.forEach(function(a){if(a.records){Object.keys(a.records).forEach(function(k){saved[k]=a.records[k]})}});
   if(existing.length&&!Object.keys(S.attMarks).length){S.attMarks={};Object.keys(saved).forEach(function(k){S.attMarks[k]=saved[k]})}
