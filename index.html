@@ -928,7 +928,8 @@ function homeTiles(){
   var tiles=["today","sched","lec","notes","exams"];
   if(S.role!=="student"&&S.role!=="rep")tiles.push("students");
   if(REAL==="dev"||REAL==="prof"||REAL==="head")tiles.push("att");
-  if(REAL==="dev"||REAL==="head"){tiles.push("stats");tiles.push("log")}
+  if(REAL==="dev"||REAL==="head"||REAL==="prof")tiles.push("stats");
+  if(REAL==="dev"||REAL==="head")tiles.push("log")
   return'<div class="grid">'+tiles.map(function(k){
     return'<button class="tile" data-go="'+k+'" style="background:'+SEC[k].c+'"><span class="ti">'+IC[k]+'</span><span><span class="tl">'+SEC[k].t+'</span><span class="ts">'+info[k]+'</span></span>'+(k==="notes"&&S.role==="student"&&u?'<b class="tb">'+u+'</b>':"")+'</button>';
   }).join("")+'</div>';
