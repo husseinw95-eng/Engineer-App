@@ -191,6 +191,7 @@ function checkNew(c){
   var ids=S[c].map(function(x){return x.id}),old=seenGet(c);
   if(old!==null){S[c].filter(match).filter(function(x){return !x.deleted&&old.indexOf(x.id)<0}).forEach(function(x){
     if(c==="notes")notify("📢 تبليغ جديد: "+x.title,x.body||"");
+    else if(c==="lectures")notify("📄 محاضرة جديدة: "+x.title,(x.subject||"")+(x.by?" · "+x.by:""));
     else notify("📝 امتحان جديد: "+x.course,(x.kind?x.kind+" · ":"")+x.date+" "+(x.time||"")+(x.room?" · قاعة "+x.room:""))})}
   seenSet(c,ids);
 }
@@ -201,7 +202,7 @@ function unread(){var r=readSet();return S.notes.filter(match).filter(function(n
 var SEED={courses:[],exams:[],notes:[]};
 try{SEED=JSON.parse($("data").textContent)}catch(e){}
 var APP_VERSION=1,REAL="student",MYNAME="",MYUID="",REPINFO={},UNSUBS=[],PT=null,db=null,auth=null;
-S.reqs=[];S.reps=[];S.allAdmins=[];S.myReq=null;S.pend=null;S.rr=null;S.students=[];S.adminPanel=false;S.addAdmOpen=false;S.addRepOpen=false;S.signupMode=false;S.stdQ="";S.actLog=[];S.lectures=[];S.statsTab="overview";S.attendance=[];S.attDate=new Date().toISOString().slice(0,10);S.attMarks={};S.attSaved=false;S.attStage="";S.attGrp="";
+S.reqs=[];S.reps=[];S.allAdmins=[];S.myReq=null;S.pend=null;S.rr=null;S.students=[];S.adminPanel=false;S.addAdmOpen=false;S.addRepOpen=false;S.signupMode=false;S.searchQ="";S.stdQ="";S.actLog=[];S.lectures=[];S.statsTab="overview";S.attendance=[];S.attDate=new Date().toISOString().slice(0,10);S.attMarks={};S.attSaved=false;S.attStage="";S.attGrp="";S.calendar=[];S.assignments=[];S.grades=[];S.chatMsgs=[];S.chatText="";
 try{var _st=localStorage.getItem("curTab");if(_st)S.tab=_st}catch(e){}
 function toast(m){var t=document.getElementById("toast");if(!t){t=document.createElement("div");t.id="toast";t.className="toast";document.body.appendChild(t)}t.textContent=m;t.style.display="block";clearTimeout(t._t);t._t=setTimeout(function(){t.style.display="none"},3500)}
 function twoTap(k,fn){if(S.pend===k){S.pend=null;clearTimeout(PT);fn();render();return}S.pend=k;render();clearTimeout(PT);PT=setTimeout(function(){S.pend=null;render()},4000)}
@@ -272,7 +273,11 @@ if(!window.firebase||!CF||CF.apiKey==="YOUR_API_KEY"){
   firebase.initializeApp(CF);db=firebase.firestore();auth=firebase.auth();
   db.enablePersistence({synchronizeTabs:true}).catch(function(){});
   ["courses","exams","notes"].forEach(function(c){db.collection(c).onSnapshot(function(s){S[c]=s.docs.map(function(d){var o=d.data();o.id=d.id;return o});if(c==="exams"||c==="notes")checkNew(c);render()},function(){})});
-  db.collection("lectures").orderBy("ts","desc").limit(200).onSnapshot(function(q){S.lectures=q.docs.map(function(z){var o=z.data();o.id=z.id;return o});render()},function(){S.lectures=[]});
+  db.collection("lectures").orderBy("ts","desc").limit(200).onSnapshot(function(q){S.lectures=q.docs.map(function(z){var o=z.data();o.id=z.id;return o});checkNew("lectures");render()},function(){S.lectures=[]});
+  db.collection("calendar").orderBy("date","asc").onSnapshot(function(q){S.calendar=q.docs.map(function(z){var o=z.data();o.id=z.id;return o});render()},function(){S.calendar=[]});
+  db.collection("assignments").orderBy("ts","desc").limit(200).onSnapshot(function(q){S.assignments=q.docs.map(function(z){var o=z.data();o.id=z.id;return o});render()},function(){S.assignments=[]});
+  db.collection("grades").orderBy("ts","desc").limit(200).onSnapshot(function(q){S.grades=q.docs.map(function(z){var o=z.data();o.id=z.id;return o});render()},function(){S.grades=[]});
+  db.collection("chatMsgs").orderBy("ts","desc").limit(100).onSnapshot(function(q){S.chatMsgs=q.docs.map(function(z){var o=z.data();o.id=z.id;return o}).reverse();render()},function(){S.chatMsgs=[]});
   db.collection("meta").doc("app").onSnapshot(function(d){var x=d.data()||{};S.upd=(x.latest>APP_VERSION)?x:null;render()},function(){});
   auth.onAuthStateChanged(function(u){
     UNSUBS.forEach(function(f){try{f()}catch(e){}});UNSUBS=[];S.myReq=null;S.reqs=[];S.reps=[];S.allAdmins=[];S.students=[];S.adminPanel=false;REPINFO={};MYUID=u?u.uid:"";
@@ -674,6 +679,10 @@ IC.notes=IC.bell;
 IC.students=svg('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>');
 IC.att=svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>');
 IC.lec=svg('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h6"/>');
+IC.cal=svg('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>');
+IC.assign=svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>');
+IC.grade=svg('<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>');
+IC.chat=svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>');
 IC.stats=svg('<path d="M18 20V10M12 20V4M6 20v-6"/>');
 IC.log=svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>');
 var SEC={
@@ -685,7 +694,11 @@ var SEC={
  lec:{t:"المحاضرات",c:"linear-gradient(135deg,#b45309,#92400e)"},
  att:{t:"الحضور والغياب",c:"linear-gradient(135deg,#059669,#047857)"},
  stats:{t:"الإحصائيات",c:"linear-gradient(135deg,#f59e0b,#d97706)"},
- log:{t:"سجل النشاطات",c:"linear-gradient(135deg,#7c3aed,#5b21b6)"}
+ log:{t:"سجل النشاطات",c:"linear-gradient(135deg,#7c3aed,#5b21b6)"},
+ cal:{t:"التقويم الأكاديمي",c:"linear-gradient(135deg,#0891b2,#0e7490)"},
+ assign:{t:"الواجبات",c:"linear-gradient(135deg,#c026d3,#a21caf)"},
+ grade:{t:"الدرجات",c:"linear-gradient(135deg,#059669,#065f46)"},
+ chat:{t:"غرفة الدردشة",c:"linear-gradient(135deg,#6366f1,#4f46e5)"}
 };
 function hdr(){
   var u=unread();
@@ -702,6 +715,65 @@ function installCard(){
 function notifCard(){
   if(S.role!=="student"||!("Notification" in window)||Notification.permission!=="default")return"";
   return'<div class="card row" style="align-items:center"><div><div class="t">🔔 الإشعارات</div><div class="m">فعّلها لتصلك التبليغات والامتحانات الجديدة</div></div><button class="go" data-notif="1" style="width:auto;padding:8px 16px;margin:0">تفعيل</button></div>';
+}
+function searchBar(){
+  return'<div style="margin:8px 0"><input id="globalSearch" type="search" placeholder="🔍 بحث في التبليغات والمحاضرات والامتحانات..." oninput="S.searchQ=this.value;render()" value="'+esc(S.searchQ)+'" style="width:100%;padding:10px 14px;border:2px solid var(--bd);border-radius:12px;background:var(--bg);font:inherit;font-size:14px;box-sizing:border-box"></div>'+(S.searchQ?searchResults():"");
+}
+function searchResults(){
+  var q=S.searchQ.toLowerCase();
+  var results=[];
+  S.notes.filter(match).filter(function(n){return !n.deleted}).forEach(function(n){
+    if((n.title||"").toLowerCase().indexOf(q)>=0||(n.body||"").toLowerCase().indexOf(q)>=0)
+      results.push({type:"📢",section:"notes",title:n.title,sub:n.from||"",id:n.id,ts:n.ts});
+  });
+  S.lectures.filter(match).forEach(function(l){
+    if((l.title||"").toLowerCase().indexOf(q)>=0||(l.subject||"").toLowerCase().indexOf(q)>=0)
+      results.push({type:"📄",section:"lec",title:l.title,sub:l.subject||"",id:l.id,ts:l.ts});
+  });
+  S.exams.filter(match).forEach(function(e){
+    if((e.course||"").toLowerCase().indexOf(q)>=0||(e.type||"").toLowerCase().indexOf(q)>=0)
+      results.push({type:"📝",section:"exams",title:e.course,sub:(e.type||"")+" · "+e.date,id:e.id,ts:e.ts||0});
+  });
+  S.assignments.filter(match).forEach(function(a){
+    if((a.title||"").toLowerCase().indexOf(q)>=0||(a.course||"").toLowerCase().indexOf(q)>=0)
+      results.push({type:"📌",section:"assign",title:a.title,sub:a.course+" · "+a.deadline,id:a.id,ts:a.ts||0});
+  });
+  S.grades.filter(match).forEach(function(g){
+    if((g.course||"").toLowerCase().indexOf(q)>=0||(g.examType||"").toLowerCase().indexOf(q)>=0)
+      results.push({type:"📊",section:"grade",title:g.course,sub:g.examType||"",id:g.id,ts:g.ts||0});
+  });
+  S.calendar.filter(match).forEach(function(c){
+    if((c.title||"").toLowerCase().indexOf(q)>=0||(c.type||"").toLowerCase().indexOf(q)>=0)
+      results.push({type:"📅",section:"cal",title:c.title,sub:c.date+(c.type?" · "+c.type:""),id:c.id,ts:0});
+  });
+  if(!results.length)return'<div class="empty" style="padding:8px">لا توجد نتائج لـ "'+esc(S.searchQ)+'"</div>';
+  results.sort(function(a,b){return(b.ts||0)-(a.ts||0)});
+  var h='<div class="card" style="padding:8px">';
+  results.slice(0,15).forEach(function(r){
+    h+='<div class="log-item" data-go="'+r.section+'" style="cursor:pointer"><span class="log-act">'+r.type+' '+esc(r.title)+'</span><div class="log-time">'+esc(r.sub)+'</div></div>';
+  });
+  if(results.length>15)h+='<div class="m" style="text-align:center;padding:6px">و '+( results.length-15)+' نتيجة أخرى...</div>';
+  return h+'</div>';
+}
+function examCountdown(){
+  var up=S.exams.filter(match).filter(function(e){return daysLeft(e)>=0}).sort(function(a,b){return(a.date+a.time)>(b.date+b.time)?1:-1});
+  if(!up.length)return"";
+  var e=up[0],d=daysLeft(e);
+  var now=new Date(),exam=new Date(e.date+"T"+(e.time||"08:00"));
+  var diff=exam-now;if(diff<0)diff=0;
+  var hrs=Math.floor(diff/3600000)%24,mins=Math.floor(diff/60000)%60;
+  var dStr=d+"";
+  var urgClr=d<=1?"#dc2626":d<=3?"#f59e0b":"#2f5bea";
+  return'<div class="card" style="background:linear-gradient(135deg,'+urgClr+','+urgClr+'cc);color:#fff;text-align:center;padding:16px">'
+    +'<div style="font-size:13px;opacity:.9">⏰ الامتحان القادم</div>'
+    +'<div style="font-size:18px;font-weight:800;margin:6px 0">'+esc(e.course)+'</div>'
+    +'<div style="display:flex;justify-content:center;gap:12px;margin:8px 0">'
+    +'<div style="background:rgba(255,255,255,.2);border-radius:10px;padding:8px 14px"><div style="font-size:24px;font-weight:900">'+dStr+'</div><div style="font-size:11px">يوم</div></div>'
+    +'<div style="background:rgba(255,255,255,.2);border-radius:10px;padding:8px 14px"><div style="font-size:24px;font-weight:900">'+hrs+'</div><div style="font-size:11px">ساعة</div></div>'
+    +'<div style="background:rgba(255,255,255,.2);border-radius:10px;padding:8px 14px"><div style="font-size:24px;font-weight:900">'+mins+'</div><div style="font-size:11px">دقيقة</div></div>'
+    +'</div>'
+    +'<div style="font-size:13px;opacity:.9">'+esc(e.date)+' · '+esc(e.time||"")+(e.type?' · '+esc(e.type):'')+'</div>'
+    +'</div>';
 }
 function nearBanner(){
   return S.exams.filter(match).filter(function(e){var d=daysLeft(e);return d>=0&&d<=3}).map(function(e){var d=daysLeft(e);return'<div class="alert">تنبيه · امتحان '+esc(e.course)+(d===0?" اليوم":d===1?" غدًا":" بعد "+d+" أيام")+" — "+esc(e.time)+'</div>'}).join("");
@@ -852,6 +924,163 @@ function exportAttendance(){
   XLSX.writeFile(wb,"attendance_"+stg+(grp?"_"+grp:"")+"_"+S.attDate+".xlsx");
   toast("تم تصدير سجل الحضور ✅");
 }
+function calendarView(){
+  var h="";
+  if(can("exams")){
+    var ed=S.edit&&S.edit.col==="calendar"?S.calendar.filter(function(x){return x.id===S.edit.id})[0]:null;
+    var v=ed||{};
+    h+='<div class="card"><div class="t" style="margin-bottom:8px">'+(ed?"✏️ تعديل":"📅 إضافة")+" حدث</div>";
+    h+='<form class="add" data-f="calendar">';
+    h+='<input class="full" name="title" placeholder="عنوان الحدث" value="'+esc(v.title||"")+'" required>';
+    h+='<input class="full" name="desc" placeholder="الوصف (اختياري)" value="'+esc(v.desc||"")+'">';
+    h+='<input class="full" type="date" name="date" value="'+(v.date||"")+'" required>';
+    h+='<select class="full" name="type"><option value="عطلة"'+(v.type==="عطلة"?" selected":"")+'>🎉 عطلة</option><option value="امتحانات"'+(v.type==="امتحانات"?" selected":"")+'>📝 فترة امتحانات</option><option value="تسجيل"'+(v.type==="تسجيل"?" selected":"")+'>📋 تسجيل</option><option value="فعالية"'+(v.type==="فعالية"?" selected":"")+'>🎓 فعالية</option><option value="أخرى"'+(v.type==="أخرى"?" selected":"")+'>📌 أخرى</option></select>';
+    h+='<select class="full" name="stage"><option value="">كل المراحل</option>';
+    STAGES.forEach(function(s,i){h+='<option value="'+(i+1)+'"'+(v.stage==String(i+1)?" selected":"")+'>'+s+'</option>'});
+    h+='</select>';
+    h+='<button class="go full">'+(ed?"💾 حفظ":"➕ إضافة")+"</button>";
+    if(ed)h+='<button type="button" class="go full" style="background:var(--bd);color:var(--fg)" onclick="S.edit=null;render()">إلغاء</button>';
+    h+="</form></div>";
+  }
+  var today=new Date().toISOString().slice(0,10);
+  var upcoming=S.calendar.filter(match).filter(function(e){return e.date>=today}).sort(function(a,b){return a.date>b.date?1:-1});
+  var past=S.calendar.filter(match).filter(function(e){return e.date<today}).sort(function(a,b){return b.date>a.date?1:-1});
+  if(!upcoming.length&&!past.length)h+='<div class="empty">لا توجد أحداث في التقويم بعد.</div>';
+  if(upcoming.length){
+    h+='<div class="card"><div class="t" style="margin-bottom:8px">📆 الأحداث القادمة</div>';
+    upcoming.forEach(function(e){
+      var typeIco=e.type==="عطلة"?"🎉":e.type==="امتحانات"?"📝":e.type==="تسجيل"?"📋":e.type==="فعالية"?"🎓":"📌";
+      var d=daysLeft(e);
+      h+='<div class="log-item"><span class="log-act">'+typeIco+' '+esc(e.title)+tg(e)+'</span>';
+      h+='<div class="m">'+esc(e.date)+(e.desc?" · "+esc(e.desc):"")+(d>=0?' · <b style="color:var(--pr)">بعد '+d+' يوم</b>':"")+'</div>';
+      if(can("exams"))h+='<div style="margin-top:4px"><button class="x" data-e="calendar" data-id="'+esc(e.id)+'" style="font-size:13px">✏️</button>'+delBtn("calendar",e.id)+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+  if(past.length){
+    h+='<div class="card" style="opacity:.7"><div class="t" style="margin-bottom:8px">📁 أحداث سابقة</div>';
+    past.slice(0,10).forEach(function(e){
+      h+='<div class="log-item"><span class="log-act">'+esc(e.title)+'</span><div class="m">'+esc(e.date)+(e.type?" · "+esc(e.type):"")+'</div></div>';
+    });
+    h+='</div>';
+  }
+  return h;
+}
+function assignmentsView(){
+  var h="";
+  if(can("exams")){
+    var ed=S.edit&&S.edit.col==="assignments"?S.assignments.filter(function(x){return x.id===S.edit.id})[0]:null;
+    var v=ed||{};
+    h+='<div class="card"><div class="t" style="margin-bottom:8px">'+(ed?"✏️ تعديل":"📝 إضافة")+" واجب</div>";
+    h+='<form class="add" data-f="assignments">';
+    h+='<input class="full" name="title" placeholder="عنوان الواجب" value="'+esc(v.title||"")+'" required>';
+    h+='<input class="full" name="course" placeholder="اسم المادة" value="'+esc(v.course||"")+'" required>';
+    h+='<input class="full" name="desc" placeholder="الوصف والتعليمات" value="'+esc(v.desc||"")+'">';
+    h+='<input class="full" type="date" name="deadline" value="'+(v.deadline||"")+'" required>';
+    h+='<select class="full" name="stage"><option value="">كل المراحل</option>';
+    STAGES.forEach(function(s,i){h+='<option value="'+(i+1)+'"'+(v.stage==String(i+1)?" selected":"")+'>'+s+'</option>'});
+    h+='</select>';
+    h+='<input class="full" name="grp" placeholder="الكروب (اختياري)" value="'+esc(v.grp||"")+'">';
+    h+='<button class="go full">'+(ed?"💾 حفظ":"➕ إضافة")+"</button>";
+    if(ed)h+='<button type="button" class="go full" style="background:var(--bd);color:var(--fg)" onclick="S.edit=null;render()">إلغاء</button>';
+    h+="</form></div>";
+  }
+  var today=new Date().toISOString().slice(0,10);
+  var all=S.assignments.filter(match);
+  var active=all.filter(function(a){return a.deadline>=today}).sort(function(a,b){return a.deadline>b.deadline?1:-1});
+  var expired=all.filter(function(a){return a.deadline<today}).sort(function(a,b){return b.deadline>a.deadline?1:-1});
+  if(!all.length)return h+'<div class="empty">لا توجد واجبات بعد.</div>';
+  if(active.length){
+    h+='<div class="card"><div class="t" style="margin-bottom:8px">📌 واجبات مطلوبة</div>';
+    active.forEach(function(a){
+      var dl={date:a.deadline};var d=daysLeft(dl);
+      var urgClr=d<=1?"#dc2626":d<=3?"#f59e0b":"var(--pr)";
+      h+='<div class="log-item"><span class="log-act">'+esc(a.title)+tg(a)+'</span>';
+      h+='<div class="m">'+esc(a.course)+' · <b style="color:'+urgClr+'">التسليم: '+esc(a.deadline)+(d>=0?" (بعد "+d+" يوم)":"")+'</b></div>';
+      if(a.desc)h+='<div class="m" style="margin-top:4px">'+esc(a.desc)+'</div>';
+      if(can("exams"))h+='<div style="margin-top:4px"><button class="x" data-e="assignments" data-id="'+esc(a.id)+'" style="font-size:13px">✏️</button>'+delBtn("assignments",a.id)+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+  if(expired.length){
+    h+='<div class="card" style="opacity:.7"><div class="t" style="margin-bottom:8px">📁 واجبات سابقة</div>';
+    expired.slice(0,10).forEach(function(a){
+      h+='<div class="log-item"><span class="log-act">'+esc(a.title)+'</span><div class="m">'+esc(a.course)+' · '+esc(a.deadline)+'</div></div>';
+    });
+    h+='</div>';
+  }
+  return h;
+}
+function gradesView(){
+  var h="";
+  if(can("exams")){
+    var ed=S.edit&&S.edit.col==="grades"?S.grades.filter(function(x){return x.id===S.edit.id})[0]:null;
+    var v=ed||{};
+    h+='<div class="card"><div class="t" style="margin-bottom:8px">'+(ed?"✏️ تعديل":"📊 رفع")+" درجات</div>";
+    h+='<form class="add" data-f="grades">';
+    h+='<input class="full" name="course" placeholder="اسم المادة" value="'+esc(v.course||"")+'" required>';
+    h+='<input class="full" name="examType" placeholder="نوع الامتحان (نصفي / نهائي / كويز)" value="'+esc(v.examType||"")+'" required>';
+    h+='<input class="full" type="number" name="maxGrade" placeholder="الدرجة الكاملة" value="'+(v.maxGrade||"")+'" required>';
+    h+='<select class="full" name="stage"><option value="">كل المراحل</option>';
+    STAGES.forEach(function(s,i){h+='<option value="'+(i+1)+'"'+(v.stage==String(i+1)?" selected":"")+'>'+s+'</option>'});
+    h+='</select>';
+    h+='<input class="full" name="grp" placeholder="الكروب (اختياري)" value="'+esc(v.grp||"")+'">';
+    h+='<textarea class="full" name="results" placeholder="الدرجات (اسم الطالب: الدرجة) كل سطر طالب" style="min-height:100px">'+esc(v.results||"")+'</textarea>';
+    h+='<button class="go full">'+(ed?"💾 حفظ":"📊 نشر الدرجات")+"</button>";
+    if(ed)h+='<button type="button" class="go full" style="background:var(--bd);color:var(--fg)" onclick="S.edit=null;render()">إلغاء</button>';
+    h+="</form></div>";
+  }
+  var all=S.grades.filter(match);
+  if(!all.length)return h+'<div class="empty">لا توجد درجات منشورة بعد.</div>';
+  all.forEach(function(g){
+    h+='<div class="card"><div class="row"><div><div class="t">📊 '+esc(g.course)+' · '+esc(g.examType||"")+tg(g)+'</div>';
+    h+='<div class="m">الدرجة الكاملة: '+(g.maxGrade||"–")+(g.by?" · "+esc(g.by):"")+(g.ts?" · "+new Date(g.ts).toLocaleDateString("ar",{day:"numeric",month:"short"}):"")+'</div></div>';
+    if(can("exams"))h+='<div><button class="x" data-e="grades" data-id="'+esc(g.id)+'" style="font-size:13px">✏️</button>'+delBtn("grades",g.id)+'</div>';
+    h+='</div>';
+    if(g.results){
+      h+='<div style="margin-top:8px;font-size:13px;white-space:pre-line;background:var(--bg);padding:8px;border-radius:8px;border:1px solid var(--bd)">'+esc(g.results)+'</div>';
+    }
+    h+='</div>';
+  });
+  return h;
+}
+function chatView(){
+  var h='<div class="card" style="display:flex;flex-direction:column;min-height:400px">';
+  h+='<div class="t" style="margin-bottom:8px">💬 غرفة الدردشة</div>';
+  h+='<div id="chatBox" style="flex:1;overflow-y:auto;max-height:400px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--bd)">';
+  if(!S.chatMsgs.length)h+='<div class="empty">لا توجد رسائل بعد. ابدأ المحادثة!</div>';
+  S.chatMsgs.forEach(function(m){
+    var isMine=m.uid===MYUID;
+    var roleClr=m.role==="dev"?"#7c3aed":m.role==="prof"?"var(--pr)":m.role==="head"?"#059669":m.role==="rep"?"#b45309":"#6b7280";
+    h+='<div style="margin:6px 0;text-align:'+(isMine?"left":"right")+'">';
+    h+='<div style="display:inline-block;max-width:85%;padding:8px 12px;border-radius:12px;background:'+(isMine?"var(--pr)":"var(--bd)")+';color:'+(isMine?"#fff":"var(--tx)")+';font-size:14px;text-align:right">';
+    h+='<div style="font-size:11px;font-weight:700;color:'+(isMine?"rgba(255,255,255,.7)":roleClr)+'">'+esc(m.name||"مجهول")+'</div>';
+    h+=esc(m.text);
+    h+='<div style="font-size:10px;opacity:.6;margin-top:2px">'+(m.ts?new Date(m.ts).toLocaleTimeString("ar",{hour:"2-digit",minute:"2-digit"}):"")+'</div>';
+    h+='</div></div>';
+  });
+  h+='</div>';
+  if(MYUID){
+    h+='<div style="display:flex;gap:6px;margin-top:8px">';
+    h+='<input id="chatInput" class="full" style="flex:1;margin:0" placeholder="اكتب رسالة..." value="'+esc(S.chatText)+'">';
+    h+='<button class="go" id="sendChat" style="margin:0;white-space:nowrap">إرسال</button>';
+    h+='</div>';
+  }else{
+    h+='<div class="m" style="text-align:center;padding:8px">سجل دخول للمشاركة في الدردشة</div>';
+  }
+  h+='</div>';
+  return h;
+}
+function sendChatMsg(){
+  var inp=$("chatInput");if(!inp)return;
+  var txt=inp.value.trim();if(!txt)return;
+  if(!db||!MYUID){toast("سجل دخول أولاً");return}
+  db.collection("chatMsgs").add({
+    text:txt,uid:MYUID,name:MYNAME||"مجهول",role:REAL,ts:Date.now()
+  }).then(function(){S.chatText="";render();setTimeout(function(){var box=$("chatBox");if(box)box.scrollTop=box.scrollHeight},100)}).catch(fail);
+}
 function statsView(){
   var stds=S.students,exms=S.exams,nts=S.notes.filter(function(n){return !n.deleted}),admns=S.allAdmins||[];
   var h='';
@@ -901,6 +1130,35 @@ function statsView(){
     })}else h+='<div class="m">لا توجد مشاهدات بعد</div>';
     h+='</div>';
   }
+  // إحصائيات الحضور
+  if(S.attendance.length){
+    h+='<div class="card"><div class="t" style="margin-bottom:8px">📋 إحصائيات الحضور</div>';
+    var totalSessions=S.attendance.length;
+    var totalP=0,totalA=0;
+    S.attendance.forEach(function(a){
+      var recs=a.records||{};Object.keys(recs).forEach(function(k){if(recs[k]==="present")totalP++;else totalA++});
+    });
+    var totalAll=totalP+totalA;
+    var avgRate=totalAll?Math.round(totalP/totalAll*100):0;
+    h+='<div class="stat-grid">';
+    h+='<div class="stat-box"><div class="sn">'+totalSessions+'</div><div class="sl">جلسة حضور</div></div>';
+    h+='<div class="stat-box"><div class="sn" style="color:var(--ok)">'+avgRate+'%</div><div class="sl">نسبة الحضور</div></div>';
+    h+='<div class="stat-box"><div class="sn">'+totalP+'</div><div class="sl">حاضر</div></div>';
+    h+='</div>';
+    // أكثر الطلاب غياباً
+    var absMap={};
+    S.attendance.forEach(function(a){
+      var recs=a.records||{};Object.keys(recs).forEach(function(k){if(recs[k]==="absent"){if(!absMap[k])absMap[k]=0;absMap[k]++}});
+    });
+    var absArr=Object.keys(absMap).map(function(k){return{name:k,count:absMap[k]}}).sort(function(a,b){return b.count-a.count}).slice(0,5);
+    if(absArr.length){
+      h+='<div style="margin-top:8px;font-weight:700;font-size:14px">⚠️ أكثر الطلاب غياباً</div>';
+      absArr.forEach(function(s){
+        h+='<div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--bd);font-size:13px"><span>'+esc(s.name)+'</span><span style="color:#dc2626;font-weight:700">'+s.count+' غياب</span></div>';
+      });
+    }
+    h+='</div>';
+  }
   return h;
 }
 function actLogView(){
@@ -929,7 +1187,14 @@ function homeTiles(){
   var info={sched:cs.length+" محاضرة",today:td?td+" محاضرات اليوم":"لا توجد اليوم",exams:ex,notes:S.role==="student"?(u?u+" جديد":"لا جديد"):nt+" تبليغ",students:stCount+" طالب",att:attCount?attCount+" سجل اليوم":"تسجيل الحضور",stats:"لوحة البيانات",log:(S.actLog||[]).length+" نشاط"};
   var lecCount=S.lectures.filter(match).length;
   info.lec=lecCount?lecCount+" ملف":"لا توجد ملفات";
-  var tiles=["today","sched","lec","notes","exams"];
+  var calCount=S.calendar.filter(match).length;
+  info.cal=calCount?calCount+" حدث":"التقويم";
+  var assignCount=S.assignments.filter(match).length;
+  info.assign=assignCount?assignCount+" واجب":"لا توجد واجبات";
+  var gradeCount=S.grades.filter(match).length;
+  info.grade=gradeCount?gradeCount+" مادة":"الدرجات";
+  info.chat="محادثة مباشرة";
+  var tiles=["today","sched","lec","notes","exams","cal","assign","grade","chat"];
   if(S.role!=="student"&&S.role!=="rep")tiles.push("students");
   if(REAL==="dev"||REAL==="prof"||REAL==="head")tiles.push("att");
   if(REAL==="dev"||REAL==="head"||REAL==="prof")tiles.push("stats");
@@ -957,11 +1222,14 @@ function render(){
   var h=loginCard();
   if(S.view==="head")edAlert='<div class="alert" style="background:var(--pr2);color:var(--pr)">رئيس القسم / العميد: يمكنك تعديل الامتحانات والتبليغات وقوائم الطلاب.</div>';
   if(S.view==="rep")edAlert='<div class="alert" style="background:var(--pr2);color:var(--pr)">ممثل كروب: يمكنك نشر تبليغات لكروبك وحذفها.</div>';
-  if(S.tab==="home")h+=previewBar()+edAlert+(S.role==="student"?welcomeCard()+meBar()+installCard()+notifCard()+nearBanner():"")+homeTiles()+adminPanel();
-  else{var inner=S.tab==="sched"?schedView():S.tab==="today"?todayView():S.tab==="exams"?examsView():S.tab==="lec"?lecturesView():S.tab==="students"?studentsView():S.tab==="att"?attendanceView():S.tab==="stats"?statsView():S.tab==="log"?actLogView():notesView();
+  if(S.tab==="home")h+=previewBar()+edAlert+(S.role==="student"?welcomeCard()+meBar()+installCard()+notifCard()+nearBanner()+examCountdown():"")+searchBar()+homeTiles()+adminPanel();
+  else{var inner=S.tab==="sched"?schedView():S.tab==="today"?todayView():S.tab==="exams"?examsView():S.tab==="lec"?lecturesView():S.tab==="cal"?calendarView():S.tab==="assign"?assignmentsView():S.tab==="grade"?gradesView():S.tab==="chat"?chatView():S.tab==="students"?studentsView():S.tab==="att"?attendanceView():S.tab==="stats"?statsView():S.tab==="log"?actLogView():notesView();
   h+=secHead(S.tab)+edAlert+(S.role==="student"||S.tab==="students"||S.tab==="att"||S.tab==="stats"||S.tab==="log"?"":filterBar())+'<div class="page-enter">'+inner+'</div>';}
   $("view").innerHTML=h;
   var sf=document.getElementById("stdSearch");if(sf&&S.stdQ){sf.value=S.stdQ;sf.focus();sf.setSelectionRange(S.stdQ.length,S.stdQ.length)}
+  var gs=document.getElementById("globalSearch");if(gs&&S.searchQ){gs.value=S.searchQ;gs.focus();gs.setSelectionRange(S.searchQ.length,S.searchQ.length)}
+  var ci=$("chatInput");if(ci){ci.onkeydown=function(ev){if(ev.key==="Enter"){ev.preventDefault();sendChatMsg()}};ci.oninput=function(){S.chatText=this.value}}
+  var chatBox=$("chatBox");if(chatBox&&S.tab==="chat")chatBox.scrollTop=chatBox.scrollHeight;
   var impF=$("impFile");if(impF)impF.onchange=function(){if(impF.files[0])parseImportFile(impF.files[0])};
   renderNav();
 }
@@ -1013,6 +1281,7 @@ $("view").onclick=function(e){var gt=e.target.closest&&e.target.closest("[data-g
   var ab=e.target.closest&&e.target.closest("[data-att]");if(ab){var ap=ab.dataset.att.split(":");S.attMarks[ap[0]]=S.attMarks[ap[0]]===ap[1]?"":ap[1];S.attSaved=false;render();return}
   if(e.target.id==="saveAtt"){saveAttendance();return}
   if(e.target.id==="exportAtt"){exportAttendance();return}
+  if(e.target.id==="sendChat"){sendChatMsg();return}
   var da=e.target.closest&&e.target.closest("[data-delatt]");if(da){var aid=da.dataset.delatt;twoTap("delatt"+aid,function(){if(db)db.collection("attendance").doc(aid).delete().then(function(){toast("تم حذف سجل الحضور");logActivity("delete_attendance","حذف سجل حضور")}).catch(fail)});return}
   var dl=e.target.closest&&e.target.closest("[data-dellog]");if(dl){var lid=dl.dataset.dellog;twoTap("dellog"+lid,function(){if(db)db.collection("activityLog").doc(lid).delete().then(function(){toast("تم حذف النشاط")}).catch(fail)});return}
 };
@@ -1103,6 +1372,11 @@ $("view").onsubmit=function(e){
     }
     if(S.edit&&S.edit.col==="lectures"){var oldL=S.lectures.filter(function(x){return x.id===S.edit.id})[0]||{};if(oldL.file){o.file=oldL.file;o.fileName=oldL.fileName}save("lectures",S.edit.id,o);return}
     toast("يرجى اختيار ملف PDF");return;
+  }
+  if(col==="calendar"||col==="assignments"||col==="grades"){
+    if(MYNAME)o.by=MYNAME;o.uid=MYUID;o.ts=Date.now();
+    if(S.edit&&S.edit.col===col){save(col,S.edit.id,o);logActivity("edit_"+col,"تعديل: "+(o.title||o.course||""));return}
+    add(col,o);logActivity("add_"+col,"إضافة: "+(o.title||o.course||""));return;
   }
   add(col,o);
 };
