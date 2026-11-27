@@ -176,7 +176,6 @@ html,body{overflow-x:hidden}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script>if("serviceWorker"in navigator)addEventListener("load",function(){navigator.serviceWorker.register("sw.js")})</script>
 <script src="firebase-config.js"></script>
 <script>
@@ -213,6 +212,7 @@ function repLabel(){return repName()+(REPINFO&&REPINFO.name?" · "+REPINFO.name:
 function staffView(){return S.view==="dev"||S.view==="prof"||S.view==="head"}
 function setRole(r){S.ready=true;REAL=r;S.view=r;S.role=(r==="student"||r==="rep")?"student":"prof";if(S.role==="student")S.edit=null;render()}
 function fail(e){toast("تعذّر الحفظ: "+(e&&e.message&&e.message.indexOf("bytes")>-1?"حجم البيانات كبير جداً، قلّل حجم الملف":"ليست لديك صلاحية أو لا يوجد اتصال."))}
+function loadChunkedLecture(id,fn){toast("⏳ جاري تحميل المحاضرة...");db.collection("lectures").doc(id).collection("chunks").get().then(function(snap){var arr=[];snap.forEach(function(d){arr.push(d.data())});arr.sort(function(a,b){return a.i-b.i});var b64=arr.map(function(c){return c.d}).join("");var a=document.createElement("a");a.href=b64;a.download=fn||"محاضرة.pdf";document.body.appendChild(a);a.click();document.body.removeChild(a);toast("✅ تم التحميل")}).catch(function(e){toast("❌ فشل التحميل: "+(e.message||"خطأ"))})}
 function logActivity(action,detail){if(!db||!MYUID)return;db.collection("activityLog").add({action:action,detail:detail||"",by:MYNAME||MYUID,role:REAL,ts:Date.now()}).catch(function(){})}
 function exportStudents(){
   if(!window.XLSX){toast("مكتبة Excel غير متوفرة");return}
@@ -239,7 +239,7 @@ function exportGroup(grpKey){
   toast("تم تصدير كروب "+gr+" ("+list.length+" طالب) ✅");
 }
 function add(col,o){if(db){db.collection(col).add(o).then(function(){logActivity("add_"+col,o.name||o.title||o.course||"")}).catch(fail)}}
-function del(col,id){if(!db)return;if(col==="notes"){var nd=(S.notes||[]).filter(function(x){return x.id===id})[0];db.collection("notes").doc(id).update({deleted:true,deletedBy:(S.view==="rep"?repLabel():MYNAME)||"",deletedAt:Date.now()}).then(function(){logActivity("delete_note",nd?nd.title:"")}).catch(fail);return}if(col==="adm"){if(id===MYUID){toast("لا يمكنك حذف نفسك!");return}var ad=(S.allAdmins||[]).filter(function(x){return x.id===id})[0];db.collection("admins").doc(id).delete().then(function(){toast("تم حذف المستخدم");logActivity("delete_admin",ad?ad.name:"")}).catch(fail);return}var item=S[col]?S[col].filter(function(x){return x.id===id})[0]:null;if(col==="lectures"&&item&&item.storagePath&&storage){storage.ref(item.storagePath).delete().catch(function(){})}db.collection(col==="rep"?"admins":col).doc(id).delete().then(function(){logActivity("delete_"+col,item?(item.name||item.title||item.course):"")}).catch(fail)}
+function del(col,id){if(!db)return;if(col==="notes"){var nd=(S.notes||[]).filter(function(x){return x.id===id})[0];db.collection("notes").doc(id).update({deleted:true,deletedBy:(S.view==="rep"?repLabel():MYNAME)||"",deletedAt:Date.now()}).then(function(){logActivity("delete_note",nd?nd.title:"")}).catch(fail);return}if(col==="adm"){if(id===MYUID){toast("لا يمكنك حذف نفسك!");return}var ad=(S.allAdmins||[]).filter(function(x){return x.id===id})[0];db.collection("admins").doc(id).delete().then(function(){toast("تم حذف المستخدم");logActivity("delete_admin",ad?ad.name:"")}).catch(fail);return}var item=S[col]?S[col].filter(function(x){return x.id===id})[0]:null;if(col==="lectures"&&item&&item.chunked){db.collection("lectures").doc(id).collection("chunks").get().then(function(snap){var b=db.batch();snap.forEach(function(d){b.delete(d.ref)});b.commit()}).catch(function(){})}db.collection(col==="rep"?"admins":col).doc(id).delete().then(function(){logActivity("delete_"+col,item?(item.name||item.title||item.course):"")}).catch(fail)}
 function save(col,id,o){if(db)db.collection(col).doc(id).update(o).then(function(){S.edit=null;render()}).catch(fail)}
 function seedAll(){
   if(!db)return;
@@ -271,7 +271,7 @@ if(!window.firebase||!CF||CF.apiKey==="YOUR_API_KEY"){
   S.ready=true;
   $("cfg").innerHTML='<div class="alert">⚠️ لم تُضبط إعدادات Firebase بعد. عدّل الملف firebase-config.js.</div>';
 }else{
-  firebase.initializeApp(CF);db=firebase.firestore();auth=firebase.auth();var storage=firebase.storage();
+  firebase.initializeApp(CF);db=firebase.firestore();auth=firebase.auth();
   db.enablePersistence({synchronizeTabs:true}).catch(function(){});
   ["courses","exams","notes"].forEach(function(c){db.collection(c).onSnapshot(function(s){S[c]=s.docs.map(function(d){var o=d.data();o.id=d.id;return o});if(c==="exams"||c==="notes")checkNew(c);render()},function(){})});
   db.collection("lectures").orderBy("ts","desc").limit(200).onSnapshot(function(q){S.lectures=q.docs.map(function(z){var o=z.data();o.id=z.id;return o});checkNew("lectures");render()},function(){S.lectures=[]});
@@ -840,7 +840,7 @@ function lecturesView(){
     h+='<div class="card"><div class="row"><div><div class="t">📄 '+esc(l.title)+tg(l)+'</div>';
     h+='<div class="m">'+esc(l.subject||"")+(l.by?" · "+esc(l.by):"")+(l.ts?" · "+new Date(l.ts).toLocaleDateString("ar",{day:"numeric",month:"short"}):"")+'</div></div>';
     h+='<div>'+(canEdit?'<button class="x" data-e="lectures" data-id="'+esc(l.id)+'" style="font-size:13px">✏️</button>':'')+(canDel?delBtn("lectures",l.id):"")+'</div></div>';
-    h+='<div style="margin-top:8px"><a href="'+esc(l.file)+'" target="_blank" rel="noopener"'+(l.file&&l.file.indexOf("data:")===0?' download="'+esc(l.fileName||"محاضرة.pdf")+'"':"")+' style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:linear-gradient(135deg,#b45309,#92400e);color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px"><span style="font-size:22px">📥</span> تحميل '+esc(l.fileName||"PDF")+'</a></div>';
+    if(l.chunked){h+='<div style="margin-top:8px"><button onclick="loadChunkedLecture(\''+esc(l.id)+'\',\''+esc(l.fileName||"محاضرة.pdf")+'\')" style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:linear-gradient(135deg,#b45309,#92400e);color:#fff;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:14px"><span style="font-size:22px">📥</span> تحميل '+esc(l.fileName||"PDF")+'</button></div>';}else if(l.file){h+='<div style="margin-top:8px"><a href="'+esc(l.file)+'" target="_blank" rel="noopener"'+(l.file.indexOf("data:")===0?' download="'+esc(l.fileName||"محاضرة.pdf")+'"':"")+' style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:linear-gradient(135deg,#b45309,#92400e);color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px"><span style="font-size:22px">📥</span> تحميل '+esc(l.fileName||"PDF")+'</a></div>';}
     h+='</div>';
   });
   return h;
@@ -1365,21 +1365,33 @@ $("view").onsubmit=function(e){
     if(lecIn&&lecIn.files&&lecIn.files[0]){
       var lf=lecIn.files[0];
       if(lf.type!=="application/pdf"){toast("يرجى اختيار ملف PDF فقط");return}
-      if(lf.size>20*1024*1024){toast("حجم الملف كبير جداً (الحد 20MB)");return}
+      if(lf.size>5*1024*1024){toast("حجم الملف كبير جداً (الحد 5MB)");return}
       toast("⏳ جاري رفع المحاضرة...");
-      var fName="lectures/"+Date.now()+"_"+lf.name.replace(/[^a-zA-Z0-9._؀-ۿ-]/g,"_");
-      var ref=storage.ref(fName);
-      ref.put(lf,{contentType:"application/pdf"}).then(function(snap){
-        return snap.ref.getDownloadURL();
-      }).then(function(url){
-        o.file=url;o.fileName=lf.name;o.storagePath=fName;
-        if(S.edit&&S.edit.col==="lectures"){save("lectures",S.edit.id,o)}
-        else{add("lectures",o);logActivity("add_lectures","رفع محاضرة: "+o.title)}
-        toast("✅ تم رفع المحاضرة بنجاح");
-      }).catch(function(e){toast("❌ فشل رفع الملف: "+(e.message||"خطأ غير معروف"))});
-      return;
+      var rd2=new FileReader();
+      rd2.onload=function(ev){
+        var b64=ev.target.result;var CHUNK=750000;o.fileName=lf.name;
+        if(b64.length<=CHUNK){
+          o.file=b64;
+          if(S.edit&&S.edit.col==="lectures"){save("lectures",S.edit.id,o)}
+          else{add("lectures",o);logActivity("add_lectures","رفع محاضرة: "+o.title)}
+          toast("✅ تم رفع المحاضرة بنجاح");
+        }else{
+          var nc=Math.ceil(b64.length/CHUNK);o.chunked=true;o.totalChunks=nc;o.file="";
+          var isEd=S.edit&&S.edit.col==="lectures";
+          var p=isEd?db.collection("lectures").doc(S.edit.id).update(o).then(function(){return{id:S.edit.id}}):db.collection("lectures").add(o);
+          p.then(function(ref){
+            var did=ref.id||(S.edit&&S.edit.id);
+            var proms=[];
+            for(var i=0;i<nc;i++){proms.push(db.collection("lectures").doc(did).collection("chunks").doc("c"+i).set({i:i,d:b64.substring(i*CHUNK,(i+1)*CHUNK)}))}
+            return Promise.all(proms);
+          }).then(function(){
+            if(!isEd)logActivity("add_lectures","رفع محاضرة: "+o.title);
+            S.edit=null;render();toast("✅ تم رفع المحاضرة بنجاح");
+          }).catch(function(e){toast("❌ فشل رفع الملف: "+(e.message||"خطأ غير معروف"))});
+        }
+      };rd2.readAsDataURL(lf);return;
     }
-    if(S.edit&&S.edit.col==="lectures"){var oldL=S.lectures.filter(function(x){return x.id===S.edit.id})[0]||{};if(oldL.file){o.file=oldL.file;o.fileName=oldL.fileName;o.storagePath=oldL.storagePath||""}save("lectures",S.edit.id,o);return}
+    if(S.edit&&S.edit.col==="lectures"){var oldL=S.lectures.filter(function(x){return x.id===S.edit.id})[0]||{};if(oldL.file||oldL.chunked){o.file=oldL.file||"";o.fileName=oldL.fileName;if(oldL.chunked){o.chunked=true;o.totalChunks=oldL.totalChunks}}save("lectures",S.edit.id,o);return}
     toast("يرجى اختيار ملف PDF");return;
   }
   if(col==="calendar"||col==="assignments"||col==="grades"){
